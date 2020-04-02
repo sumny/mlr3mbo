@@ -8,8 +8,8 @@
 
 # and why do we pass some tings in "control" and some separately?
 
-bayesop_soo = function(objective, learner, acqf, terminator, init_random = NULL) {
-  assert_r6(obj, "Objective")
+bayesop_soo = function(instance, learner, acqf, init_random = NULL) {
+  assert_r6(instance, "OptimInstance")
   assert_r6(acqf, "AcqFunction")
   assert_r6(acqf_optim, "AcqOptimizer")
   archive = Archive$new(objective$domain, objective$codomain)
