@@ -8,23 +8,33 @@
 #' @section Fields: See [AcqFunction]
 #' @section Methods: See [AcqFunction]
 #' @export
-AcqFunctionCB = R6Class( "AcqFunctionCB", inherit = AcqFunction,
+AcqFunctionCB = R6Class("AcqFunctionCB", 
+  inherit = AcqFunction,
+
   public = list(
-    initialize = function(learner, lambda = 2) {
-      settings = list(lambda = assert_number(lambda, lower = 0))
-      fun = function(dt) {
-        p = self$surrogate$predict_newdata(task = NULL, newdata = dt)
-        res = p$mean + self$mult_max_to_min * self$settings$lambda * p$se
-        # FIXME: what do we return here? do we want to see se, mean, too?
-        data.table(y = res)
-      }
+    initialize = function(surrogate, domain, codomain) {
+      param_set = ParamSet$new(list(
+        ParamDbl$new("lambda", lower = 0, default = 2)
+      ))
+      param_set$values$lambda = 2
+      
       super$initialize(
-        id = "acqf_cb", 
-        fun = fun, 
-        settings = settings,
-        objective = objective,
-        minimize = objective$minimize
+        id = "AcqCB", 
+        param_set = param_set,
+        surrogate = surrogate,
       )
+    },
+
+    set_up = function(optim_instance) {
+      super$set_up(optim_instance)
+      self$minimize = map_lgl(self$codomain$tags, identical, y = "minimize")
+      self$mult
+    }
+
+    eval = function(xdt) {
+      p = self$surrogate$predict_newdata(task = NULL, newdata = xdt)
+      res = p$mean + self$mult_max_to_min * self$settings$lambda * p$se
+      data.table(acq_y = res)
     }
   )
 )

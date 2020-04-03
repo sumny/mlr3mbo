@@ -44,19 +44,20 @@ AcqFunction = R6Class("AcqFunction",
     id = NULL,
     param_set = NULL,
     surrogate = NULL,
-    minimize = NULL,
+    optim_instance = NULL,
+    minimize = NULL, # Note: This is not an AB, because it has to be calculated often!
 
-    initialize = function(id, param_set = ParamSet$new()) {
+    initialize = function(id, param_set = ParamSet$new(), surrogate) {
       self$id = assert_character("id")
       self$param_set = assert_param_set(param_set)
-    },
-
-    set_up = function(surrogate, minimize) {
       self$surrogate = assert_r6(surrogate, "Surrogate")
-      self$minimize = assert_flag(minimize)
     },
 
-    fun = function(xdt) {
+    set_up = function(optim_instance) {
+      self$optim_instance = optim_instance
+    },
+
+    eval = function(xdt) {
       stop("not implemented")
     }
   )

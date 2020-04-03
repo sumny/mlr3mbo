@@ -13,11 +13,16 @@ AcqFunctionMean = R6Class("AcqFunctionMean",
   
   public = list(
 
-    initialize = function() {
-      super$initialize("AcqMean")
+    initialize = function(surrogate, domain, codomain) {
+      super$initialize(
+        id = "AcqMean", 
+        surrogate = surrogate,
+        domain = domain,
+        codomain = codomain
+      )
     },
 
-    fun = function(xdt) {
+    eval = function(xdt) {
       p = self$surrogate$predict_newdata(xdt)
       data.table(y = p$response)
     }
