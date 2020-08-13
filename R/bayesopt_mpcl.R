@@ -19,7 +19,7 @@ bayesop_mpcl = function(instance, acq_function, acq_optimizer, liar, q) {
   repeat {
     # normal soo updates
     xydt = archive$data()
-    acq_function$surrogate$update(xydt = xydt[, c(archive$cols_x, archive$cols_y), with = FALSE], y_cols = archive$cols_y)
+    acq_function$surrogate$update(archive)
     acq_function$update(archive) 
 
     xdt = acq_optimizer$optimize(acq_function)
@@ -38,7 +38,7 @@ bayesop_mpcl = function(instance, acq_function, acq_optimizer, liar, q) {
 
       # update all objects with lie
       xydt = temp_archive$data()
-      temp_acq_function$surrogate$update(xydt = xydt[, c(archive$cols_x, archive$cols_y), with = FALSE], y_cols = archive$cols_y)
+      temp_acq_function$surrogate$update(archive)
       temp_acq_function$update(temp_archive)
 
       # obtain new proposal based on lie
@@ -70,12 +70,12 @@ if (FALSE) {
 
   terminator = trm("evals", n_evals = 20)
 
-  instance = OptimInstanceSingleCrit$new(
+  instance = MboInstanceSingleCrit$new(
     objective = obfun,
     terminator = terminator
   )
 
-  surrogate = SurrogateSingleCritLearner$new(learner = lrn("regr.ranger"))
+  surrogate = SurrogateLearner$new(learner = lrn("regr.ranger"), columns = "y")
   acqfun = AcqFunctionEI$new(surrogate = surrogate)
   acqopt = AcqOptimizerRandomSearch$new()
 
@@ -84,7 +84,7 @@ if (FALSE) {
   plot(y~batch_nr, data[batch_nr>1,], type = "b")
 
   xgrid = generate_design_grid(instance$search_space, 100)$data
-  preds = cbind(xgrid, acqfun$surrogate$predict(xgrid))
+  preds = cbind(xgrid, acqfun$surrogate$predict(xgrid)[[1]])
   library(ggplot2)
   g = ggplot(data, aes(x = x, y = y, col = batch_nr))
   g = g + geom_line() + geom_point()

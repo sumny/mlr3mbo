@@ -18,7 +18,7 @@ bayesop_smsemoa = function(instance, acq_function, acq_optimizer) {
 
   repeat {
     xydt = archive$data()
-    acq_function$surrogate$update(xydt = xydt[, c(archive$cols_x, archive$cols_y), with = FALSE], y_cols = archive$cols_y) #update surrogate model with new data
+    acq_function$surrogate$update(archive) #update surrogate model with new data
     acq_function$progress = instance$terminator$param_set$values$n_evals - archive$n_evals
     acq_function$update(archive)
     xdt = acq_optimizer$optimize(acq_function)
@@ -52,7 +52,7 @@ if (FALSE) {
 
   terminator = trm("evals", n_evals = 20)
 
-  instance = OptimInstanceMultiCrit$new(
+  instance = MboInstanceMultiCrit$new(
     objective = obfun, 
     terminator = terminator
   )

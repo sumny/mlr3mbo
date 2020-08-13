@@ -17,7 +17,7 @@ AcqOptimizerRandomSearch = R6Class("AcqOptimizerRandomSearch",
       xdt = generate_design_random(acqfun$search_space, self$param_set$values$iters)$data
       ydt = acqfun$eval_dt(xdt)
       xydt = cbind(xdt, ydt)
-      setorderv(xydt, acqf$codomain$ids(), order = 1, na.last = TRUE)
+      setorderv(xydt, acqf$codomain$ids(), order = -1 * acqf$mult_max_to_min, na.last = TRUE)
       xydt[1, acqf$search_space$ids(), with = FALSE]
     }
 ))

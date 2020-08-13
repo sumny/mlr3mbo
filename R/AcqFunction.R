@@ -65,14 +65,13 @@ AcqFunction = R6Class("AcqFunction",
     setup = function(archive) {
 
       # here we can change the optim direction of the codomain for the acq function
-      self$codomain = generate_acq_codomain(archive, direction = self$direction, id = self$id)
+      self$codomain = generate_acq_codomain(archive$codomain, direction = self$direction, id = self$id)
 
-      self$mult_max_to_min = ifelse(archive$codomain$tags == "minimize", 1, -1)
+      self$mult_max_to_min = mult_max_to_min(archive$codomain)
 
       self$search_space = archive$search_space
       
       xydt = archive$data()
-      surrogate$setup(xydt = xydt[, c(archive$cols_x, archive$cols_y), with = FALSE], y_cols = archive$cols_y)
     },
 
     update = function(archive) {

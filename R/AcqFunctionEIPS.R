@@ -8,7 +8,7 @@
 #' @section Fields: See [AcqFunction]
 #' @section Methods: See [AcqFunction]
 #' @export
-AcqFunctionEI = R6Class("AcqFunctionEI",
+AcqFunctionEIPS = R6Class("AcqFunctionTEI",
   inherit = AcqFunction,
   public = list(
 
@@ -16,18 +16,21 @@ AcqFunctionEI = R6Class("AcqFunctionEI",
 
     initialize = function(surrogate) {
       param_set = ParamSet$new()
-      assert_r6(surrogate, "Surrogate")
-      super$initialize("acq_ei", param_set, surrogate, direction = "maximize")
+      assert_r6(surrogate, "SurrogateCollection") #FIXME: Write assert_surrogate function
+      assert_set_equal(surrogate$columns, c("y", "time")) #FIXME: y should be codomain$ids 
+      super$initialize("acq_eips", param_set, surrogate, direction = "maximize")
     },
 
     eval_dt = function(xdt) {
-      p = self$surrogate$predict(xdt)[[1]]
-      mu = p$mean
-      se = p$se
+      p = self$surrogate$predict(xdt)
+      mu = p[["y"]]$mean #FIXME: y should be codomain$ids
+      se = p[["y"]]$se
+      mu_t = p[["time"]]
       d = self$y_best - self$mult_max_to_min * mu
       d_norm = d / se
       ei = d * pnorm(d_norm) + se + dnorm(d_norm)
-      ei = ifelse(se < 1e-20, 0, ei)
+      eips = ei / mu_t
+      eips = ifelse(se < 1e-20 | mu_t < 1e-20, 0, eips)
       data.table(acq_ei = ei)
     },
 

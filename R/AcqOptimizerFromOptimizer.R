@@ -13,7 +13,7 @@ AcqOptimizerFromOptimizer = R6Class("AcqOptimizerFromOptimizer",
     optimize = function(acqf) {
       assert_r6(acqf, "AcqFunction")
 
-      inst = OptimInstanceSingleCrit$new(objective = acqf$generate_objective(),
+      inst = MboInstanceSingleCrit$new(objective = acqf$generate_objective(),
         search_space = acqf$search_space, terminator = self$term)
 
       private$.optimizer$optimize(inst)

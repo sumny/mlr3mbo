@@ -3,19 +3,20 @@
 #' @description
 #'
 #' @export
-Surrogate = R6Class("Surrogate",
+SurrogateCollection = R6Class("SurrogateCollection",
+  inherit = Surrogate,
   public = list(
 
     #' @field Stores surrogate model
-    columns = NULL,
+    surrogates = NULL,
 
     #' @description
     #' Creates a new instance of this [R6][R6::R6Class] class.
-    #' @param column column of the [MboArchive].
     #'
     #' @param model Model
-    initialize = function(columns) {
-      self$columns = assert_character(columns)
+    initialize = function(surrogates) {
+      self$surrogates = assert_list(surrogates, "Surrogate")
+      super$initialize(map_chr(surrogates, "columns"))
     },
 
     #' @description
@@ -23,7 +24,9 @@ Surrogate = R6Class("Surrogate",
     #'
     #' @return `NULL`
     update = function(archive) {
-      stop("Abstract")
+      for (surrogate in self$surrogates) {
+        surrogate$update(archive)
+      }
     },
 
     #' @description
@@ -31,16 +34,19 @@ Surrogate = R6Class("Surrogate",
     #'
     #' @return `NULL`
     setup = function(archive) {
-      self$update(archive)
+      for (surrogate in self$surrogates) {
+        surrogate$setup(archive)
+      }
     },
 
 
     #' @description
     #' Returns mean response and standard error
     #'
-    #' @return named list with at least one [data.table::data.table]
+    #' @return list of [data.table::data.table] objects
     predict = function(xdt) {
-      stop("Abstract")
+      preds = lapply(self$surrogates, function(surrogate) surrogate$predict(xdt))
+      unlist(preds, recursive = FALSE)
     }
   )
 )

@@ -27,7 +27,7 @@ obfun = ObjectiveRFun$new(
 
 terminator = trm("evals", n_evals = 20)
 
-instance = OptimInstanceSingleCrit$new(
+instance = MboInstanceSingleCrit$new(
   objective = obfun, 
   terminator = terminator
 )
@@ -35,7 +35,7 @@ instance = OptimInstanceSingleCrit$new(
 design = generate_design_lhs(obfun$domain, 4)$data
 instance$eval_batch(design)
 
-surrogate = SurrogateSingleCritLearner$new(learner = lrn("regr.km"))
+surrogate = SurrogateLearner$new(learner = lrn("regr.km"))
 acqfun = AcqFunctionCB$new(surrogate = surrogate)
 acqopt = AcqOptimizerFromOptimizer$new(
   opt("random_search", batch_size = 100), 
@@ -48,14 +48,14 @@ plot(y~batch_nr, instance$archive$data()[batch_nr>1,], type = "b")
 ## Multipoint through constant liar
 
 ```{r cl_example}
-instance = OptimInstanceSingleCrit$new(
+instance = MboInstanceSingleCrit$new(
   objective = obfun, 
   terminator = terminator
 )
 design = generate_design_lhs(obfun$domain, 4)$data
 instance$eval_batch(design)
 
-surrogate = SurrogateSingleCritLearner$new(learner = lrn("regr.km"))
+surrogate = SurrogateLearner$new(learner = lrn("regr.km"))
 acqfun = AcqFunctionCB$new(surrogate = surrogate)
 acqopt = AcqOptimizerFromOptimizer$new(
   opt("random_search", batch_size = 100), 

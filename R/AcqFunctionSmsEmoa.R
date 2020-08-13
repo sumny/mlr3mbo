@@ -23,7 +23,7 @@ AcqFunctionSmsEmoa = R6Class("AcqFunctionSmsEmoa",
         ParamDbl$new("eps", lower = 0, default = NULL, special_vals = list(NULL)) # for NULL, it will be calculated dynamically
       ))
       param_set$values$lambda = 1
-      assert_r6(surrogate, "SurrogateMultiCrit")
+      assert_r6(surrogate, "SurrogateCollection")
       super$initialize("acq_sms", param_set, surrogate = surrogate, direction = "maximize")
     },
 

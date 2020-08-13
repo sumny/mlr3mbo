@@ -22,10 +22,11 @@ bayesop_soo = function(instance, acq_function, acq_optimizer) {
   }
 
   acq_function$setup(archive) #setup necessary to determine the domain, codomain (for opt direction) of acq function
+  acq_function$surrogate$setup(archive) #maybe not necessary
 
   repeat {
     xydt = archive$data()
-    acq_function$surrogate$update(xydt = xydt[, c(archive$cols_x, archive$cols_y), with = FALSE], y_cols = archive$cols_y) #update surrogate model with new data
+    acq_function$surrogate$update(archive) #update surrogate model with new data
     
     acq_function$update(archive) # NOTE: necessary becaue we have to dertermine e.g. y_best for ei, there are possible other costy calculations that we just want to do once for each state. We might not want to do these calculation in acq_function$eval_dt() because this can get called several times during the optimization.
     # one more costy example would be AEI, where we ask the surrogate for the mean prediction of the points in the design
@@ -51,18 +52,35 @@ if (FALSE) {
     id = "test"
   )
 
-  terminator = trm("evals", n_evals = 20)
+  terminator = trm("evals", n_evals = 10)
 
-  instance = OptimInstanceSingleCrit$new(
+  instance = MboInstanceSingleCrit$new(
     objective = obfun, 
     terminator = terminator
   )
 
-  surrogate = SurrogateSingleCritLearner$new(learner = lrn("regr.km"))
+  surrogate = SurrogateLearner$new(learner = lrn("regr.km", nugget = 0.001), columns = "y")
   acqfun = AcqFunctionEI$new(surrogate = surrogate)
   acqopt = AcqOptimizerRandomSearch$new()
 
   bayesop_soo(instance, acqfun, acqopt)
+
+  data = instance$archive$data()
+  plot(y~batch_nr, data[batch_nr>1,], type = "b")
+
+  xgrid = generate_design_grid(instance$search_space, 100)$data
+  preds = cbind(xgrid, acqfun$surrogate$predict(xgrid)$y)
+  preds = cbind(preds, acqfun$eval_dt(xgrid))
+
+  acqopt$optimize(acqfun)
+
+  library(ggplot2)
+  g = ggplot(data, aes(x = x, y = y, col = batch_nr))
+  g = g + geom_line() + geom_point()
+  g = g + geom_line(data = preds, aes(x = x, y = mean), col = "blue")
+  g = g + geom_line(data = preds, aes(x = x, y = acq_ei), col = "red")
+  g
+
 }
 
 
