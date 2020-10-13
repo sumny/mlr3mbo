@@ -1,5 +1,7 @@
 # mlr3mbo
 
+FIXME: QDO stuff, WIP
+
 A new R6 and much more modular implementation for single- and multicrit Bayesian optimization.
 We are really not done here! Very prelim code, so beware!
 
@@ -43,7 +45,7 @@ acqopt = AcqOptimizerFromOptimizer$new(
   opt("random_search", batch_size = 100), 
   trm("evals", n_evals = 100)
 )
-bayesopt_soo(instance, acq_function, acq_optimizer)
+bayesop_soo(instance, acqfun, acqopt)
 plot(y~batch_nr, instance$archive$data()[batch_nr>1,], type = "b")
 ```
 
@@ -63,6 +65,6 @@ acqopt = AcqOptimizerFromOptimizer$new(
   opt("random_search", batch_size = 100), 
   trm("evals", n_evals = 100)
 )
-bayesopt_mpcl(instance, acq_function, acq_optimizer)
+bayesop_mpcl(instance, acqfun, acqopt)
 plot(y~batch_nr, instance$archive$data()[batch_nr>1,], type = "b")
 ```
