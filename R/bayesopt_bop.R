@@ -84,7 +84,7 @@ if (FALSE) {
 
   cols = c("red", "green")
   niches = as.character(1:2)
-  y_ = acq_function$surrogate$predict(data.table(x = x))[[1]]
+  y_ = acqfun$surrogate$predict(data.table(x = x))[[1]]
   g_ = instance$feature$surrogate$predict(data.table(x = x))[[1]]
 
   #plot(x, y, type = "l")
