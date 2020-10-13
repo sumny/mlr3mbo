@@ -72,8 +72,8 @@ if (FALSE) {
     terminator = terminator
   )
 
-  acq_function = AcqFunctionEJIE$new(SurrogateSingleCritLearner$new(surrogate$clone(deep = TRUE)))
-  acq_optimizer = AcqOptimizerRandomSearch$new()
+  acqfun = AcqFunctionEJIE$new(SurrogateSingleCritLearner$new(surrogate$clone(deep = TRUE)))
+  acqopt = AcqOptimizerRandomSearch$new()
 
   bayesop_bop(instance, acqfun, acqopt)
 
