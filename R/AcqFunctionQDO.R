@@ -1,8 +1,7 @@
 #' @title Acquisition Function QDO
 #'
 #' @description
-#' Based on a surrogate model, the acquisition function encodes the preference to evaluate
-#' a new point for evaluation. QDO.
+#' Based on a surrogate model, the acquisition function encodes the preference to evaluate a new point for evaluation. QDO.
 #'
 #' @export
 AcqFunctionQDO = R6Class("AcqFunctionQDO",
@@ -11,7 +10,7 @@ AcqFunctionQDO = R6Class("AcqFunctionQDO",
     #' @field id (`character(1)`).
     id = NULL,
 
-    #' @field surrogate [Surrogate].
+    #' @field surrogate ([Surrogate]).
     surrogate = NULL,
 
     #' @field param_set ([paradox::ParamSet]).
@@ -29,15 +28,16 @@ AcqFunctionQDO = R6Class("AcqFunctionQDO",
     #' @field surrogate_max_to_min (`numeric(1)`).
     surrogate_max_to_min = NULL, # optim direction of the obj function 1 for min, -1 for max, maybe it makes sense to make this private so it is clear that this is not meant to turn the acq into a minimization problem
 
-    #' @field niches.
-    #' FIXME:
-    niches = NULL, 
+    #' @field niches (`character()`).
+    niches = NULL,
 
-    #' @field feature_surrogate_pointer 
-    #' FIXME: actually having a pointer here to the feature surrogate would be perfect
+    #' @field feature_function_eval_dt FIXME.
+    feature_function_eval_dt = NULL,
+
+    #' @field feature_surrogate_predict FIXME.
     feature_surrogate_predict = NULL,
 
-    #' @field niche_boundaries
+    #' @field niche_boundaries ([NicheBoundaries]).
     niche_boundaries = NULL,
  
     #' @description
@@ -45,7 +45,7 @@ AcqFunctionQDO = R6Class("AcqFunctionQDO",
     #'
     #' @param id (`character(1)`).
     #' @param param_set ([paradox::ParamSet]).
-    #' @param surrogate [Surrogate].
+    #' @param surrogate ([Surrogate]).
     #' @param direction (`character(1)`).
     initialize = function(id, param_set, surrogate, direction) {
       self$id = assert_string(id)
@@ -69,28 +69,33 @@ AcqFunctionQDO = R6Class("AcqFunctionQDO",
     #' @description
     #' Sets up the acquisition function
     #'
-    #' @param archive [bbotk::Archive].
-    setup = function(archive, niche_boundaries, feature_surrogate_predict) {
+    #' @param archive ([bbotk::ArchiveQDO]).
+    #' @param feature_function_eval_dt (FIXME).
+    #' @param feature_surrogate_predict (FIXME).
+    #' @param niche_boundaries ([bbotk::NicheBoundaries]).
+    setup = function(archive, feature_function_eval_dt, feature_surrogate_predict, niche_boundaries) {
       # FIXME: Should we allow alternative search_space as additional argument?
 
       # here we can change the optim direction of the codomain for the acq function
-      self$codomain = generate_acq_codomain(archive$codomain, id = self$id, direction = self$direction)
+      self$codomain = generate_acq_codomain(archive$codomain_obj, id = self$id, direction = self$direction)
 
-      self$surrogate_max_to_min = mult_max_to_min(archive$codomain)
+      self$surrogate_max_to_min = mult_max_to_min(archive$codomain_obj)
 
       self$search_space = archive$search_space
 
       self$niches = archive$niches
 
-      self$niche_boundaries = niche_boundaries
+      self$feature_function_eval_dt = feature_function_eval_dt
 
       self$feature_surrogate_predict = feature_surrogate_predict
+
+      self$niche_boundaries = niche_boundaries
     },
 
     #' @description
     #' Update the acquisition function
     #'
-    #' @param archive [bbotk::Archive].
+    #' @param archive ([bbotk::ArchiveQDO]).
     update = function(archive) {
       # it's okay to do nothing here
     },
