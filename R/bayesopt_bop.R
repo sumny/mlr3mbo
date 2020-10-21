@@ -97,7 +97,7 @@ if (FALSE) {
   for (i in 1:2) {
     points(x[niche == niches[i]], y[niche == niches[i]], col = cols[i], cex = 0.5, type = "l")
     best = instance$archive$best(c = niches[i])
-    points(best[[1L]], best[[2L]], pch = 17)
+    points(best[[1L]], best[[2L]], col = "brown", pch = 19)
   }
 }
 
