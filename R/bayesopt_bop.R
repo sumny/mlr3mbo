@@ -17,11 +17,13 @@ bayesop_bop = function(instance, acq_function, acq_optimizer, n_design = 4 * ins
   }
 
   # FIXME: better way to pass the feature surrogate
-  acq_function$setup(archive, feature_function_eval_dt = instance$feature$feature_function$eval_dt, feature_surrogate_predict = instance$feature$surrogate$predict, niche_boundaries = instance$feature$niche_boundaries)  # setup necessary to determine the domain, codomain (for opt direction) of acq function, niche boundaries and surrogate predict
+  acq_function$setup(archive, feature_function_eval_dt = instance$feature$feature_function$eval_dt, feature_surrogate_predict = instance$feature$surrogate$predict, niches = instance$feature$niches)  # setup necessary to determine the domain, codomain (for opt direction) of acq function, niche boundaries and surrogate predict
 
   repeat {
     xydt = archive$data()
-    instance$feature$surrogate$update(xydt = xydt[, c(archive$cols_x, archive$cols_g), with = FALSE], y_cols = archive$cols_g)  # update feature function surrogate model with new data
+    if (instance$feature$model_feature_function) {
+      instance$feature$surrogate$update(xydt = xydt[, c(archive$cols_x, archive$cols_g), with = FALSE], y_cols = archive$cols_g)  # update feature function surrogate model with new data
+    }
     acq_function$surrogate$update(xydt = xydt[, c(archive$cols_x, archive$cols_y), with = FALSE], y_cols = archive$cols_y)  # update surrogate model with new data
 
     acq_function$update(archive)  # NOTE: necessary, see bayesop_soo
@@ -34,6 +36,7 @@ bayesop_bop = function(instance, acq_function, acq_optimizer, n_design = 4 * ins
 }
 
 if (FALSE) {
+  # single feature function example
   set.seed(1)
   devtools::load_all("../bbotk")
   devtools::load_all()
@@ -53,10 +56,11 @@ if (FALSE) {
     id = "g"
   )
 
-  nb1 = NicheBoundary$new("1", niche_boundary = list(g = c(0, 0.5)))
-  nb2 = NicheBoundary$new("2", niche_boundary = list(g = c(0.5, 0.9)))
+  nb1 = NicheBoundaries$new("niche1", niche_boundaries = list(g = c(0, 0.5)))
+  nb2 = NicheBoundaries$new("niche2", niche_boundaries = list(g = c(0.5, 0.9)))
 
-  nb = NicheBoundaries$new("test", niche_boundaries = list(nb1, nb2))
+  nb = NichesBoundaries$new("test", niches_boundaries = list(niche1 = nb1, niche2 = nb2))
+  #nb$get_niche_dt(ffun$eval_dt(data.table(x = c(0, 1.4, 3, 8))))
 
   surrogate = lrn("regr.km")
   surrogate$param_set$values = list(covtype = "matern3_2", optim.method = "gen", jitter = 0)
@@ -80,10 +84,10 @@ if (FALSE) {
   x = seq(from = 0.01, to = 9.99, length.out = 1001)
   y = obfun$eval_dt(data.table(x = x))[[1L]]
   g = ffun$eval_dt(data.table(x = x))[[1L]]
-  niche = ftfun$niche_boundaries$get_niche_dt(data.table(g))[[1L]]
+  niche = ftfun$niches$get_niche_dt(data.table(g))[[1L]]
 
   cols = c("red", "green")
-  niches = as.character(1:2)
+  niches = c("niche1", "niche2")
   y_ = acq_function$surrogate$predict(data.table(x = x))[[1]]
   g_ = instance$feature$surrogate$predict(data.table(x = x))[[1]]
 
@@ -100,5 +104,168 @@ if (FALSE) {
     best = instance$archive$best(j = niches[i])
     points(best[[1L]], best[[2L]], col = "brown", pch = 19)
   }
+}
+
+if (FALSE) {
+  # multiple feature functions example
+  set.seed(1)
+  devtools::load_all("../bbotk")
+  devtools::load_all()
+  library(paradox)
+  library(mlr3learners)
+
+  obfun = ObjectiveRFun$new(
+    fun = function(xs) -sin(xs[[1L]] / 2L) + cos(3L * xs[[1L]]),
+    domain = ParamSet$new(list(ParamDbl$new("x", 0, 10))),
+    id = "y"
+  )
+
+  ffun = ObjectiveRFun$new(
+    fun = function(xs) list(g1 = xs[[1L]]^2 / 100, g2 = sqrt(xs[[1L]])),
+    domain = ParamSet$new(list(ParamDbl$new("x", 0, 10))),
+    codomain = ParamSet$new(list(ParamDbl$new("g1", tags = "minimize"), ParamDbl$new("g2", tags = "minimize"))),
+    id = "g"
+  )
+
+  nb1 = NicheBoundaries$new("niche1", niche_boundaries = list(g1 = c(0, 0.5), g2 = c(0, 2)))
+  nb2 = NicheBoundaries$new("niche2", niche_boundaries = list(g1 = c(0.5, 0.9), g2 = c(2, 3)))
+
+  nb = NichesBoundaries$new("test", niches_boundaries = list(niche1 = nb1, niche2 = nb2))
+  #nb$get_niche_dt(ffun$eval_dt(data.table(x = c(0, 1.4, 3, 8))))
+
+  surrogate = lrn("regr.km")
+  surrogate$param_set$values = list(covtype = "matern3_2", optim.method = "gen", jitter = 0)
+
+  ftfun = Feature$new("test", ffun, nb, SurrogateMultiCritLearners$new(list(surrogate$clone(deep = TRUE), surrogate$clone(deep = TRUE))))
+
+  terminator = trm("evals", n_evals = 20)
+
+  instance = OptimInstanceQDOSingleCrit$new(
+    objective = obfun,
+    feature = ftfun,
+    terminator = terminator
+  )
+
+  acq_function = AcqFunctionEJIE$new(SurrogateSingleCritLearner$new(surrogate$clone(deep = TRUE)))
+  acq_optimizer = AcqOptimizerRandomSearch$new()
+  # n_design = 4 * instance$search_space$length
+
+  bayesop_bop(instance, acq_function, acq_optimizer)
+  
+  x = seq(from = 0.01, to = 9.99, length.out = 1001)
+  y = obfun$eval_dt(data.table(x = x))[[1L]]
+  g = ffun$eval_dt(data.table(x = x))
+  niche = ftfun$niches$get_niche_dt(data.table(g))[[1L]]
+
+  cols = c("red", "green")
+  niches = c("niche1", "niche2")
+  y_ = acq_function$surrogate$predict(data.table(x = x))[[1]]
+  g_ = instance$feature$surrogate$predict(data.table(x = x))
+
+  df = data.frame(x = x, y = y, col = ifelse(is.na(niche), yes = "black", no = ifelse(niche == "niche1", yes = "red", no = "green")))
+
+  best_x = instance$archive$best()[["x"]]
+  best_y = obfun$eval_dt(data.table(x = best_x))[[1L]]
+  
+  df_point = data.frame(x = best_x, y = best_y)
+
+  ggplot(df, aes(x = x, y = y)) + 
+    geom_line(aes(colour = col, group = 1)) + 
+    scale_colour_identity() +
+    geom_point(aes(x = x, y = y), df_point)
+}
+
+if (FALSE) {
+  # ROC example
+  set.seed(1)
+  devtools::load_all("../bbotk")
+  devtools::load_all()
+  library(paradox)
+  library(mlr3pipelines)
+  library(mlr3learners)
+  library(mlr3tuning)
+  library(mlr3viz)
+  library(precrec)
+
+  lgr::get_logger("mlr3")$set_threshold("warn")
+
+  task = tsk("sonar")
+  learner = lrn("classif.ranger", predict_type = "prob")
+  resampling = rsmp("cv", folds = 10L)
+  measure = msr("classif.auc")
+
+  # FIXME: needs all Tuning classes later
+  #obfun = ObjectiveTuning$new(task = task, learner = learner,
+  #  resampling = resampling, measures = list(measure),
+  #  store_benchmark_result = TRUE,
+  #  store_models = TRUE, check_values = TRUE)
+
+  domain = ParamSet$new(list(
+    ParamInt$new("mtry", lower = 1L, upper = 60L),
+    ParamInt$new("num.trees", lower = 1L, upper = 1000L)))
+
+  #refinstance = TuningInstanceSingleCrit$new(task, learner, resampling, measure, domain, trm("evals", n_evals = 20))
+  #tnr("random_search")$optimize(refinstance) # 5, 401, 0.9380148
+
+  obfun = ObjectiveRFun$new(
+    fun = function(xs) {
+      learner$param_set$values = xs
+      rr = resample(task, learner, resampling)
+      rr$aggregate(measure)
+    },
+    domain = domain,
+    codomain = ParamSet$new(list(ParamDbl$new("y", tags = "maximize"))),
+    id = "y"
+  )
+
+  # FIXME: Need an ObjectiveFeature to be more liberal
+  ffun = ObjectiveRFun$new(
+    fun = function(xs) {
+      learner$param_set$values = xs
+      rr = resample(task, learner, resampling)
+      mod = evalmod(as_precrec(rr), raw_curves = FALSE)
+      dmod = as.data.table(mod)[type == "ROC", c("x", "y")]
+      #plot(mod, "ROC")
+      data.table(roc = list(gx = dmod[["x"]], gy = dmod[["y"]]))
+    },
+    domain = domain,
+    codomain = ParamSet$new(list(ParamDbl$new("roc", tags = "minimize"))),
+    id = "groc",
+    check_values = FALSE
+  )
+
+  e1 = Ellipsoid2D$new("e1", center = c(0., 0.7), radii = c(0.025, 0.025))
+  #e2 = Ellipsoid2D$new("e2", center = c(0.4, 0.8), radii = c(0.05, 0.05))
+  e3 = Ellipsoid2D$new("e3", center = c(0.3, 1), radii = c(0.025, 0.025))
+  #e4 = Ellipsoid2D$new("e4", center = c(0.4, 0.9), radii = c(0.05, 0.1))
+
+  niches = NichesROC$new("test", ellipsoids = list(niche1 = list("e1" = e1), niche2 = list("e3" = e3)))
+
+  surrogate = lrn("regr.ranger")
+
+  ftfun = Feature$new("test", ffun, niches, NULL)
+
+  terminator = trm("evals", n_evals = 1)
+
+  instance = OptimInstanceQDOSingleCrit$new(
+    objective = obfun,
+    feature = ftfun,
+    terminator = terminator
+  )
+
+  acq_function = AcqFunctionEJIE$new(SurrogateSingleCritLearner$new(surrogate$clone(deep = TRUE)))
+  acq_optimizer = AcqOptimizerRandomSearch$new()
+  acq_optimizer$param_set$values$iters = 100
+  #n_design = 4 * instance$search_space$length
+
+  bayesop_bop(instance, acq_function, acq_optimizer)
+
+  par(mfrow = c(1, 2))
+  learner$param_set$values = list(mtry = 18, num.trees = 896)
+  rr = resample(task, learner, resampling)
+  plot(evalmod(as_precrec(rr)), "ROC")
+  learner$param_set$values = list(mtry = 8, num.trees = 617)
+  rr = resample(task, learner, resampling)
+  plot(evalmod(as_precrec(rr)), "ROC")
 }
 

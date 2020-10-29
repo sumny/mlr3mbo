@@ -4,7 +4,7 @@
 #' Based on a surrogate model, the acquisition function encodes the preference to evaluate a new point for evaluation. QDO.
 #'
 #' @export
-AcqFunctionQDO = R6Class("AcqFunctionQDO",
+AcqFunctionQDO = R6Class("AcqFunctionQDO", inherit = AcqFunction,
   public = list(
 
     #' @field id (`character(1)`).
@@ -28,7 +28,7 @@ AcqFunctionQDO = R6Class("AcqFunctionQDO",
     #' @field surrogate_max_to_min (`numeric(1)`).
     surrogate_max_to_min = NULL, # optim direction of the obj function 1 for min, -1 for max, maybe it makes sense to make this private so it is clear that this is not meant to turn the acq into a minimization problem
 
-    #' @field niches (`character()`).
+    #' @field niches (`[bbotk::Niches]`).
     niches = NULL,
 
     #' @field feature_function_eval_dt FIXME.
@@ -37,9 +37,6 @@ AcqFunctionQDO = R6Class("AcqFunctionQDO",
     #' @field feature_surrogate_predict FIXME.
     feature_surrogate_predict = NULL,
 
-    #' @field niche_boundaries ([NicheBoundaries]).
-    niche_boundaries = NULL,
- 
     #' @description
     #' Creates a new instance of this [R6][R6::R6Class] class.
     #'
@@ -72,8 +69,8 @@ AcqFunctionQDO = R6Class("AcqFunctionQDO",
     #' @param archive ([bbotk::ArchiveQDO]).
     #' @param feature_function_eval_dt (FIXME).
     #' @param feature_surrogate_predict (FIXME).
-    #' @param niche_boundaries ([bbotk::NicheBoundaries]).
-    setup = function(archive, feature_function_eval_dt, feature_surrogate_predict, niche_boundaries) {
+    #' @param niches ([bbotk::Niches]).
+    setup = function(archive, feature_function_eval_dt, feature_surrogate_predict, niches) {
       # FIXME: Should we allow alternative search_space as additional argument?
 
       # here we can change the optim direction of the codomain for the acq function
@@ -83,13 +80,11 @@ AcqFunctionQDO = R6Class("AcqFunctionQDO",
 
       self$search_space = archive$search_space
 
-      self$niches = archive$niches
+      self$niches = niches
 
       self$feature_function_eval_dt = feature_function_eval_dt
 
       self$feature_surrogate_predict = feature_surrogate_predict
-
-      self$niche_boundaries = niche_boundaries
     },
 
     #' @description

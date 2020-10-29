@@ -6,8 +6,8 @@
 \description{
 Expected Joint Improvement of Elites.
 }
-\section{Super class}{
-\code{\link[mlr3mbo:AcqFunctionQDO]{mlr3mbo::AcqFunctionQDO}} -> \code{AcqFunctionEJIE}
+\section{Super classes}{
+\code{\link[mlr3mbo:AcqFunction]{mlr3mbo::AcqFunction}} -> \code{\link[mlr3mbo:AcqFunctionQDO]{mlr3mbo::AcqFunctionQDO}} -> \code{AcqFunctionEJIE}
 }
 \section{Public fields}{
 \if{html}{\out{<div class="r6-fields">}}

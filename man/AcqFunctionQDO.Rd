@@ -6,6 +6,9 @@
 \description{
 Based on a surrogate model, the acquisition function encodes the preference to evaluate a new point for evaluation. QDO.
 }
+\section{Super class}{
+\code{\link[mlr3mbo:AcqFunction]{mlr3mbo::AcqFunction}} -> \code{AcqFunctionQDO}
+}
 \section{Public fields}{
 \if{html}{\out{<div class="r6-fields">}}
 \describe{
@@ -23,13 +26,11 @@ Based on a surrogate model, the acquisition function encodes the preference to e
 
 \item{\code{surrogate_max_to_min}}{(\code{numeric(1)}).}
 
-\item{\code{niches}}{(\code{character()}).}
+\item{\code{niches}}{(\verb{[bbotk::Niches]}).}
 
 \item{\code{feature_function_eval_dt}}{FIXME.}
 
 \item{\code{feature_surrogate_predict}}{FIXME.}
-
-\item{\code{niche_boundaries}}{(\link{NicheBoundaries}).}
 }
 \if{html}{\out{</div>}}
 }
@@ -43,6 +44,12 @@ Based on a surrogate model, the acquisition function encodes the preference to e
 \item \href{#method-generate_objective}{\code{AcqFunctionQDO$generate_objective()}}
 \item \href{#method-clone}{\code{AcqFunctionQDO$clone()}}
 }
+}
+\if{html}{
+\out{<details open ><summary>Inherited methods</summary>}
+\itemize{
+}
+\out{</details>}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-new"></a>}}
@@ -99,7 +106,7 @@ Sets up the acquisition function
   archive,
   feature_function_eval_dt,
   feature_surrogate_predict,
-  niche_boundaries
+  niches
 )}\if{html}{\out{</div>}}
 }
 
@@ -112,7 +119,7 @@ Sets up the acquisition function
 
 \item{\code{feature_surrogate_predict}}{(FIXME).}
 
-\item{\code{niche_boundaries}}{(\link[bbotk:NicheBoundaries]{bbotk::NicheBoundaries}).}
+\item{\code{niches}}{(\link[bbotk:Niches]{bbotk::Niches}).}
 }
 \if{html}{\out{</div>}}
 }
