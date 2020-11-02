@@ -42,9 +42,8 @@ AcqFunctionEJIE = R6Class("AcqFunctionEJIE",
         ei_j = d * pnorm(d_norm) + se * dnorm(d_norm)
       })
 
-      niche = self$niches$get_niche_dt(self$feature_function_eval_dt(xdt))
-
       prob_j = if (is.null(self$feature_surrogate_predict)) {
+        niche = self$niches$get_niche_dt(self$feature_function_eval_dt(xdt))
         map(transpose_list(niche), function(x) {
           p_j = rep(0, length(self$niches$niches))
           niche_match = match(x, names(self$niches$niches), nomatch = 0)
@@ -74,7 +73,9 @@ AcqFunctionEJIE = R6Class("AcqFunctionEJIE",
       ejie = Reduce("+", pmap(list(ei_j, prob_j), function(ec, pc) ec * pc))
 
       # NOTE: we have to check if a point is in a niche, if not, we do not want to propose it at all, i.e, return ejie = 0      
-      ejie[se < 1e-20 | is.na(niche)] = 0
+      ejie[se < 1e-20] = 0
+      # FIXME:
+      #ejie[se < 1e-20 | is.na(niche)] = 0
       data.table(acq_ejie = ejie)
     },
 
