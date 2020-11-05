@@ -408,9 +408,78 @@ if (FALSE) {
     geom_ribbon(aes(ymin = lwr, ymax = upr), alpha =0.3) +
     labs(x = "mtry") +
     labs(y = "Mean Fitting Time, mtry = 54, num.trees = 3707")
+}
 
+if (FALSE) {
+  # nasbench example
+  set.seed(1)
+  devtools::load_all("../bbotk")
+  devtools::load_all()
+  library(paradox)
+  library(mlr3pipelines)
+  library(mlr3learners)
+  library(mlr3tuning)
+  library(mlr3viz)
 
+  source("/home/lps/nb_reticulate.R")
 
+  #lgr::get_logger("mlr3")$set_threshold("warn")
 
+  #FIXME: surrogate
+
+  domain = ps_tune
+
+  obfun = ObjectiveRFun$new(
+    fun = function(xs) {
+      psvals = insert_named(xs, map(ps$params[ps$tags == "constant"], "default"))
+      psvals = Filter(Negate(is.null), psvals)
+      names(psvals) = fix_name(names(psvals), mode = "r_to_py")
+      configspace_config = py$ConfigSpace$Configuration(py$configspace, psvals)
+      py$performance_model$predict(config = configspace_config, representation = "configspace", with_noise = TRUE)
+    },
+    domain = ps_tune,
+    codomain = ParamSet$new(list(ParamDbl$new("performance", tags = "minimize"))),
+    id = "yperformance",
+    check_values = FALSE
+  )
+
+  # FIXME: Need an ObjectiveFeature to be more liberal
+  ffun = ObjectiveRFun$new(
+    fun = function(xs) {
+      psvals = insert_named(xs, map(ps$params[ps$tags == "constant"], "default"))
+      psvals = Filter(Negate(is.null), psvals)
+      names(psvals) = fix_name(names(psvals), mode = "r_to_py")
+      configspace_config = py$ConfigSpace$Configuration(py$configspace, psvals)
+      py$runtime_model$predict(config = configspace_config, representation = "configspace")
+    },
+    domain = ps_tune,
+    codomain = ParamSet$new(list(ParamDbl$new("runtime", tags = "minimize"))),
+    id = "gruntime",
+    check_values = FALSE
+  )
+
+  # FIXME: allow for quantile definiton of niche storing times in a container
+  nb1 = NicheBoundaries$new("niche1", niche_boundaries = list(time = c(0, 4000)))
+  nb2 = NicheBoundaries$new("niche2", niche_boundaries = list(time = c(4000, 100000)))
+
+  nb = NichesBoundaries$new("test", niches_boundaries = list(niche1 = nb1, niche2 = nb2))
+
+  surrogate = GraphLearner$new(pipeline_robustify(learner = lrn("regr.ranger"), impute_missings = TRUE, factors_to_numeric = FALSE) %>>% lrn("regr.ranger"))
+
+  ftfun = Feature$new("test", ffun, nb, SurrogateSingleCritLearner$new(surrogate$clone(deep = TRUE)))
+
+  terminator = trm("evals", n_evals = 4000)
+
+  instance = OptimInstanceQDOSingleCrit$new(
+    objective = obfun,
+    feature = ftfun,
+    terminator = terminator
+  )
+
+  acq_function = AcqFunctionEJIE$new(SurrogateSingleCritLearner$new(surrogate$clone(deep = TRUE)))
+  acq_optimizer = AcqOptimizerRandomSearch$new()
+  #n_design = 4 * instance$search_space$length
+
+  bayesop_bop(instance, acq_function, acq_optimizer, n_design = 1000)
 }
 
