@@ -20,7 +20,18 @@ bayesop_bop = function(instance, acq_function, acq_optimizer, n_design = 4 * ins
   acq_function$setup(archive, feature_function_eval_dt = instance$feature$feature_function$eval_dt, feature_surrogate_predict = instance$feature$surrogate$predict, niches = instance$feature$niches)  # setup necessary to determine the domain, codomain (for opt direction) of acq function, niche boundaries and surrogate predict
 
   repeat {
+    # FIXME: NA handling
+    #xydt = archive$data()[, c(archive$cols_x, archive$cols_g, archive$cols_y), with = FALSE]
+    #names = colnames(xydt)
+    #for (j in seq_len(NCOL(xydt))) {
+    #  name = names[j]
+    #  if (anyNA(xydt[[name]])) {
+    #    xydt[[name]][is.na(xydt[[name]])] = instance$search_space$default[[name]]
+    #  }
+    #}
+
     xydt = archive$data()
+
     if (instance$feature$model_feature_function) {
       instance$feature$surrogate$update(xydt = xydt[, c(archive$cols_x, archive$cols_g), with = FALSE], y_cols = archive$cols_g)  # update feature function surrogate model with new data
     }
@@ -432,13 +443,13 @@ if (FALSE) {
   obfun = ObjectiveRFun$new(
     fun = function(xs) {
       psvals = insert_named(xs, map(ps$params[ps$tags == "constant"], "default"))
-      psvals = Filter(Negate(is.null), psvals)
+      #psvals = Filter(Negate(is.null), psvals)
       names(psvals) = fix_name(names(psvals), mode = "r_to_py")
       configspace_config = py$ConfigSpace$Configuration(py$configspace, psvals)
       py$performance_model$predict(config = configspace_config, representation = "configspace", with_noise = TRUE)
     },
     domain = ps_tune,
-    codomain = ParamSet$new(list(ParamDbl$new("performance", tags = "minimize"))),
+    codomain = ParamSet$new(list(ParamDbl$new("performance", tags = "maximize"))),
     id = "yperformance",
     check_values = FALSE
   )
@@ -447,7 +458,7 @@ if (FALSE) {
   ffun = ObjectiveRFun$new(
     fun = function(xs) {
       psvals = insert_named(xs, map(ps$params[ps$tags == "constant"], "default"))
-      psvals = Filter(Negate(is.null), psvals)
+      #psvals = Filter(Negate(is.null), psvals)
       names(psvals) = fix_name(names(psvals), mode = "r_to_py")
       configspace_config = py$ConfigSpace$Configuration(py$configspace, psvals)
       py$runtime_model$predict(config = configspace_config, representation = "configspace")
@@ -460,15 +471,17 @@ if (FALSE) {
 
   # FIXME: allow for quantile definiton of niche storing times in a container
   nb1 = NicheBoundaries$new("niche1", niche_boundaries = list(time = c(0, 4000)))
-  nb2 = NicheBoundaries$new("niche2", niche_boundaries = list(time = c(4000, 100000)))
+  nb2 = NicheBoundaries$new("niche2", niche_boundaries = list(time = c(4000, 5000)))
+  nb3 = NicheBoundaries$new("niche3", niche_boundaries = list(time = c(5000, 10000)))
 
-  nb = NichesBoundaries$new("test", niches_boundaries = list(niche1 = nb1, niche2 = nb2))
+  nb = NichesBoundaries$new("test", niches_boundaries = list(niche1 = nb1, niche2 = nb2, niche3 = nb3))
 
-  surrogate = GraphLearner$new(pipeline_robustify(learner = lrn("regr.ranger"), impute_missings = TRUE, factors_to_numeric = FALSE) %>>% lrn("regr.ranger"))
+  #surrogate = GraphLearner$new(pipeline_robustify(learner = lrn("regr.ranger"), impute_missings = TRUE, factors_to_numeric = FALSE) %>>% lrn("regr.ranger"))
+  surrogate = GraphLearner$new(po("imputeoor")  %>>% lrn("regr.ranger"))
 
   ftfun = Feature$new("test", ffun, nb, SurrogateSingleCritLearner$new(surrogate$clone(deep = TRUE)))
 
-  terminator = trm("evals", n_evals = 4000)
+  terminator = trm("evals", n_evals = 3000)
 
   instance = OptimInstanceQDOSingleCrit$new(
     objective = obfun,
@@ -478,8 +491,12 @@ if (FALSE) {
 
   acq_function = AcqFunctionEJIE$new(SurrogateSingleCritLearner$new(surrogate$clone(deep = TRUE)))
   acq_optimizer = AcqOptimizerRandomSearch$new()
+  acq_optimizer$param_set$values$iters = 10000
   #n_design = 4 * instance$search_space$length
 
-  bayesop_bop(instance, acq_function, acq_optimizer, n_design = 1000)
+  bayesop_bop(instance, acq_function, acq_optimizer, n_design = 100)
+  
+  rs = OptimizerRandomSearch$new()
+  rs$optimize(instance)
 }
 
