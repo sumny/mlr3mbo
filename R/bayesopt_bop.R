@@ -20,22 +20,20 @@ bayesop_bop = function(instance, acq_function, acq_optimizer, n_design = 4 * ins
   acq_function$setup(archive, feature_function_eval_dt = instance$feature$feature_function$eval_dt, feature_surrogate_predict = instance$feature$surrogate$predict, niches = instance$feature$niches)  # setup necessary to determine the domain, codomain (for opt direction) of acq function, niche boundaries and surrogate predict
 
   repeat {
-    # FIXME: NA handling
-    #xydt = archive$data()[, c(archive$cols_x, archive$cols_g, archive$cols_y), with = FALSE]
-    #names = colnames(xydt)
-    #for (j in seq_len(NCOL(xydt))) {
-    #  name = names[j]
-    #  if (anyNA(xydt[[name]])) {
-    #    xydt[[name]][is.na(xydt[[name]])] = instance$search_space$default[[name]]
-    #  }
-    #}
-
     xydt = archive$data()
 
     if (instance$feature$model_feature_function) {
       instance$feature$surrogate$update(xydt = xydt[, c(archive$cols_x, archive$cols_g), with = FALSE], y_cols = archive$cols_g)  # update feature function surrogate model with new data
+      cat(c("PE", "R2", "\n"),
+        c(instance$feature$surrogate$model$model$regr.ranger$model$prediction.error, instance$feature$surrogate$model$model$regr.ranger$model$r.squared),
+        "\n"
+      )
     }
     acq_function$surrogate$update(xydt = xydt[, c(archive$cols_x, archive$cols_y), with = FALSE], y_cols = archive$cols_y)  # update surrogate model with new data
+    cat(c("PE", "R2", "\n"),
+      c(acq_function$surrogate$model$model$regr.ranger$model$prediction.error, acq_function$surrogate$model$model$regr.ranger$model$r.squared),
+      "\n"
+    )
 
     acq_function$update(archive)  # NOTE: necessary, see bayesop_soo
     xdt = acq_optimizer$optimize(acq_function)
@@ -434,6 +432,8 @@ if (FALSE) {
 
   source("/home/lps/nb_reticulate.R")
 
+  future::plan(future::multicore)
+
   #lgr::get_logger("mlr3")$set_threshold("warn")
 
   #FIXME: surrogate
@@ -476,12 +476,13 @@ if (FALSE) {
 
   nb = NichesBoundaries$new("test", niches_boundaries = list(niche1 = nb1, niche2 = nb2, niche3 = nb3))
 
-  #surrogate = GraphLearner$new(pipeline_robustify(learner = lrn("regr.ranger"), impute_missings = TRUE, factors_to_numeric = FALSE) %>>% lrn("regr.ranger"))
   surrogate = GraphLearner$new(po("imputeoor")  %>>% lrn("regr.ranger"))
+  surrogate$param_set$values$regr.ranger.se.method = "jack"
+  surrogate$param_set$values$regr.ranger.keep.inbag = TRUE
 
   ftfun = Feature$new("test", ffun, nb, SurrogateSingleCritLearner$new(surrogate$clone(deep = TRUE)))
 
-  terminator = trm("evals", n_evals = 3000)
+  terminator = trm("evals", n_evals = 300)
 
   instance = OptimInstanceQDOSingleCrit$new(
     objective = obfun,
