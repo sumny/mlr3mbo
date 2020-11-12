@@ -36,7 +36,7 @@ bayesop_bop = function(instance, acq_function, acq_optimizer, n_design = 4 * ins
     )
 
     acq_function$update(archive)  # NOTE: necessary, see bayesop_soo
-    xdt = acq_optimizer$optimize(acq_function)
+    xdt = acq_optimizer$optimize(acq_function, archive)
     instance$eval_batch(xdt)
     if (instance$is_terminated || instance$terminator$is_terminated(archive)) break
   }
@@ -414,7 +414,7 @@ if (FALSE) {
   p3$sample.fraction = seq(0, 1, length.out = 1000)
   ggplot(p3, aes(sample.fraction, mean)) +
     geom_line() +
-    geom_ribbon(aes(ymin = lwr, ymax = upr), alpha =0.3) +
+    geom_ribbon(aes(ymin = lwr, ymax = upr), alpha = 0.3) +
     labs(x = "mtry") +
     labs(y = "Mean Fitting Time, mtry = 54, num.trees = 3707")
 }
@@ -491,8 +491,9 @@ if (FALSE) {
   )
 
   acq_function = AcqFunctionEJIE$new(SurrogateSingleCritLearner$new(surrogate$clone(deep = TRUE)))
-  acq_optimizer = AcqOptimizerRandomSearch$new()
-  acq_optimizer$param_set$values$iters = 10000
+  #acq_optimizer = AcqOptimizerRandomSearch$new()
+  #acq_optimizer$param_set$values$iters = 10000
+  acq_optimizer = AcqOptimizerMutateCrossover$new()
   #n_design = 4 * instance$search_space$length
 
   bayesop_bop(instance, acq_function, acq_optimizer, n_design = 100)
