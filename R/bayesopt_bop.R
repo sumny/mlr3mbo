@@ -19,8 +19,22 @@ bayesop_bop = function(instance, acq_function, acq_optimizer, n_design = 4 * ins
   # FIXME: better way to pass the feature surrogate
   acq_function$setup(archive, feature_function_eval_dt = instance$feature$feature_function$eval_dt, feature_surrogate_predict = instance$feature$surrogate$predict, niches = instance$feature$niches)  # setup necessary to determine the domain, codomain (for opt direction) of acq function, niche boundaries and surrogate predict
 
+  ps_ch = names(which(instance$objective$domain$storage_type == "character"))
+  ps_lgl = names(which(instance$objective$domain$storage_type == "logical"))
+
+
   repeat {
-    xydt = archive$data()
+    # FIXME:
+    xydt = xydt[, c(archive$cols_x, archive$cols_g, archive$cols_y), with = FALSE]
+    xydt = setDT(imap(xydt, function(x, name) {
+      if (name %in% ps_ch) {
+        factor(x, levels = instance$objective$domain$params[[name]]$levels)
+      } else if (name %in% ps_lgl) {
+        x + 0L
+      } else {
+        x
+      }
+    }))
 
     if (instance$feature$model_feature_function) {
       instance$feature$surrogate$update(xydt = xydt[, c(archive$cols_x, archive$cols_g), with = FALSE], y_cols = archive$cols_g)  # update feature function surrogate model with new data
@@ -428,9 +442,9 @@ if (FALSE) {
   library(mlr3pipelines)
   library(mlr3learners)
   library(mlr3tuning)
-  library(mlr3viz)
+  library(mlr3learners.lightgbm)
 
-  source("/home/lps/nb_reticulate.R")
+  source("/home/user/nb_reticulate.R")
 
   future::plan(future::multicore)
 
@@ -440,6 +454,7 @@ if (FALSE) {
 
   domain = ps_tune
 
+  # FIXME: parallel
   obfun = ObjectiveRFun$new(
     fun = function(xs) {
       psvals = insert_named(xs, map(ps$params[ps$tags == "constant"], "default"))
@@ -461,7 +476,7 @@ if (FALSE) {
       #psvals = Filter(Negate(is.null), psvals)
       names(psvals) = fix_name(names(psvals), mode = "r_to_py")
       configspace_config = py$ConfigSpace$Configuration(py$configspace, psvals)
-      py$runtime_model$predict(config = configspace_config, representation = "configspace")
+      log(py$runtime_model$predict(config = configspace_config, representation = "configspace"))
     },
     domain = ps_tune,
     codomain = ParamSet$new(list(ParamDbl$new("runtime", tags = "minimize"))),
@@ -470,9 +485,9 @@ if (FALSE) {
   )
 
   # FIXME: allow for quantile definiton of niche storing times in a container
-  nb1 = NicheBoundaries$new("niche1", niche_boundaries = list(time = c(0, 4000)))
-  nb2 = NicheBoundaries$new("niche2", niche_boundaries = list(time = c(4000, 5000)))
-  nb3 = NicheBoundaries$new("niche3", niche_boundaries = list(time = c(5000, 10000)))
+  nb1 = NicheBoundaries$new("niche1", niche_boundaries = list(time = c(log(1), log(3000))))
+  nb2 = NicheBoundaries$new("niche2", niche_boundaries = list(time = c(log(3000), log(5000))))
+  nb3 = NicheBoundaries$new("niche3", niche_boundaries = list(time = c(log(5000), log(10000))))
 
   nb = NichesBoundaries$new("test", niches_boundaries = list(niche1 = nb1, niche2 = nb2, niche3 = nb3))
 
@@ -480,9 +495,12 @@ if (FALSE) {
   surrogate$param_set$values$regr.ranger.se.method = "jack"
   surrogate$param_set$values$regr.ranger.keep.inbag = TRUE
 
+  # FIXME: RegrAVG SE aggregation
+  #surrogate_rt = GraphLearner$new(po("imputeoor") %>>% po("encode") %>>% lrn("regr.lightgbm"))
+
   ftfun = Feature$new("test", ffun, nb, SurrogateSingleCritLearner$new(surrogate$clone(deep = TRUE)))
 
-  terminator = trm("evals", n_evals = 300)
+  terminator = trm("evals", n_evals = 3000)
 
   instance = OptimInstanceQDOSingleCrit$new(
     objective = obfun,
@@ -495,9 +513,10 @@ if (FALSE) {
   acq_optimizer$param_set$values$iters = 10000
   #n_design = 4 * instance$search_space$length
 
-  bayesop_bop(instance, acq_function, acq_optimizer, n_design = 100)
-  
-  rs = OptimizerRandomSearch$new()
-  rs$optimize(instance)
+  bayesop_bop(instance, acq_function, acq_optimizer)
+ 
+  # FIXME: rs, other qd-algos
+  #rs = OptimizerRandomSearch$new()
+  #rs$optimize(instance)
 }
 
