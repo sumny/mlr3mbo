@@ -36,7 +36,7 @@ AcqFunctionEJIE = R6Class("AcqFunctionEJIE",
       ei_j = map(names(self$niches$niches), function(niche) {
         best = self$y_bests[[niche]]
         if (!length(best)) best = self$surrogate_max_to_min * min(unlist(self$y_bests), na.rm = TRUE)
-        if (!is.finite(best)) best = 0  # FIXME:
+        if (!is.finite(best)) best = 0  # FIXME: this does not work
         d = best - self$surrogate_max_to_min * mu
         d_norm = d / se
         ei_j = d * pnorm(d_norm) + se * dnorm(d_norm)
@@ -72,7 +72,7 @@ AcqFunctionEJIE = R6Class("AcqFunctionEJIE",
 
       ejie = Reduce("+", pmap(list(ei_j, prob_j), function(ec, pc) ec * pc))
 
-      # NOTE: we have to check if a point is in a niche, if not, we do not want to propose it at all, i.e, return ejie = 0      
+      # FIXME: we have to check if a point is in a niche, if not, we do not want to propose it at all, i.e, return ejie = 0
       ejie[se < 1e-20] = 0
       # FIXME:
       #ejie[se < 1e-20 | is.na(niche)] = 0

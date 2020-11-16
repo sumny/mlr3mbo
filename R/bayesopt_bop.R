@@ -25,12 +25,13 @@ bayesop_bop = function(instance, acq_function, acq_optimizer, n_design = 4 * ins
 
   repeat {
     # FIXME:
-    xydt = xydt[, c(archive$cols_x, archive$cols_g, archive$cols_y), with = FALSE]
+    xydt = archive$data()[, c(archive$cols_x, archive$cols_g, archive$cols_y), with = FALSE]
     xydt = setDT(imap(xydt, function(x, name) {
       if (name %in% ps_ch) {
         factor(x, levels = instance$objective$domain$params[[name]]$levels)
       } else if (name %in% ps_lgl) {
-        x + 0L
+        #x + 0L
+        x
       } else {
         x
       }
@@ -442,9 +443,9 @@ if (FALSE) {
   library(mlr3pipelines)
   library(mlr3learners)
   library(mlr3tuning)
-  library(mlr3learners.lightgbm)
+  #library(mlr3learners.lightgbm)
 
-  source("/home/user/nb_reticulate.R")
+  source("/home/lps/nb_reticulate.R")
 
   future::plan(future::multicore)
 
@@ -457,8 +458,8 @@ if (FALSE) {
   # FIXME: parallel
   obfun = ObjectiveRFun$new(
     fun = function(xs) {
-      psvals = insert_named(xs, map(ps$params[ps$tags == "constant"], "default"))
-      #psvals = Filter(Negate(is.null), psvals)
+      psvals = insert_named(xs, map(ps$params[ps$tags == "constant"], "default"))[ps$ids()]
+      psvals = Filter(Negate(is.null), psvals)
       names(psvals) = fix_name(names(psvals), mode = "r_to_py")
       configspace_config = py$ConfigSpace$Configuration(py$configspace, psvals)
       py$performance_model$predict(config = configspace_config, representation = "configspace", with_noise = TRUE)
@@ -472,10 +473,10 @@ if (FALSE) {
   # FIXME: Need an ObjectiveFeature to be more liberal
   ffun = ObjectiveRFun$new(
     fun = function(xs) {
-      psvals = insert_named(xs, map(ps$params[ps$tags == "constant"], "default"))
-      #psvals = Filter(Negate(is.null), psvals)
+      psvals = insert_named(xs, map(ps$params[ps$tags == "constant"], "default"))[ps$ids()]
+      psvals = Filter(Negate(is.null), psvals)
       names(psvals) = fix_name(names(psvals), mode = "r_to_py")
-      configspace_config = py$ConfigSpace$Configuration(py$configspace, psvals)
+      configspace_config = py$ConfigSpace$Configuration(py$configspace, py_dict(names(psvals), psvals))
       log(py$runtime_model$predict(config = configspace_config, representation = "configspace"))
     },
     domain = ps_tune,
@@ -512,7 +513,7 @@ if (FALSE) {
   #acq_optimizer = AcqOptimizerRandomSearch$new()
   #acq_optimizer$param_set$values$iters = 10000
   acq_optimizer = AcqOptimizerMutateCrossover$new()
-  #n_design = 4 * instance$search_space$length
+  n_design = 4 * instance$search_space$length
 
   bayesop_bop(instance, acq_function, acq_optimizer)
  
