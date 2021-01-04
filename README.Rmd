@@ -13,6 +13,8 @@ knitr::opts_chunk$set(
 )
 ```
 
+QDO stuff, WIP
+
 # mlr3mbo
 
 A new R6 and much more modular implementation for single- and multicrit Bayesian optimization.
