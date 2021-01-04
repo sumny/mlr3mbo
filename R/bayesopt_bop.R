@@ -19,39 +19,40 @@ bayesop_bop = function(instance, acq_function, acq_optimizer, n_design = 4 * ins
   # FIXME: better way to pass the feature surrogate
   acq_function$setup(archive, feature_function_eval_dt = instance$feature$feature_function$eval_dt, feature_surrogate_predict = instance$feature$surrogate$predict, niches = instance$feature$niches)  # setup necessary to determine the domain, codomain (for opt direction) of acq function, niche boundaries and surrogate predict
 
-  ps_ch = names(which(instance$objective$domain$storage_type == "character"))
-  ps_lgl = names(which(instance$objective$domain$storage_type == "logical"))
+  #ps_ch = names(which(instance$objective$domain$storage_type == "character"))
+  #ps_lgl = names(which(instance$objective$domain$storage_type == "logical"))
 
 
   repeat {
     # FIXME:
     xydt = archive$data()[, c(archive$cols_x, archive$cols_g, archive$cols_y), with = FALSE]
-    xydt = setDT(imap(xydt, function(x, name) {
-      if (name %in% ps_ch) {
-        factor(x, levels = instance$objective$domain$params[[name]]$levels)
-      } else if (name %in% ps_lgl) {
-        #x + 0L
-        x
-      } else {
-        x
-      }
-    }))
+    #xydt = setDT(imap(xydt, function(x, name) {
+    #  if (name %in% ps_ch) {
+    #    factor(x, levels = instance$objective$domain$params[[name]]$levels)
+    #  } else if (name %in% ps_lgl) {
+    #    #x + 0L
+    #    x
+    #  } else {
+    #    x
+    #  }
+    #}))
 
     if (instance$feature$model_feature_function) {
       instance$feature$surrogate$update(xydt = xydt[, c(archive$cols_x, archive$cols_g), with = FALSE], y_cols = archive$cols_g)  # update feature function surrogate model with new data
-      cat(c("PE", "R2", "\n"),
-        c(instance$feature$surrogate$model$model$regr.ranger$model$prediction.error, instance$feature$surrogate$model$model$regr.ranger$model$r.squared),
-        "\n"
-      )
+      #cat(c("PE", "R2", "\n"),
+      #  c(instance$feature$surrogate$model$model$regr.ranger$model$prediction.error, instance$feature$surrogate$model$model$regr.ranger$model$r.squared),
+      #  "\n"
+      #)
     }
     acq_function$surrogate$update(xydt = xydt[, c(archive$cols_x, archive$cols_y), with = FALSE], y_cols = archive$cols_y)  # update surrogate model with new data
-    cat(c("PE", "R2", "\n"),
-      c(acq_function$surrogate$model$model$regr.ranger$model$prediction.error, acq_function$surrogate$model$model$regr.ranger$model$r.squared),
-      "\n"
-    )
+    #cat(c("PE", "R2", "\n"),
+    #  c(acq_function$surrogate$model$model$regr.ranger$model$prediction.error, acq_function$surrogate$model$model$regr.ranger$model$r.squared),
+    #  "\n"
+    #)
 
     acq_function$update(archive)  # NOTE: necessary, see bayesop_soo
-    xdt = acq_optimizer$optimize(acq_function, archive)
+    #xdt = acq_optimizer$optimize(acq_function, archive)
+    xdt = acq_optimizer$optimize(acq_function)
     instance$eval_batch(xdt)
     if (instance$is_terminated || instance$terminator$is_terminated(archive)) break
   }
@@ -91,7 +92,7 @@ if (FALSE) {
 
   ftfun = Feature$new("test", ffun, nb, SurrogateSingleCritLearner$new(surrogate$clone(deep = TRUE)))
 
-  terminator = trm("evals", n_evals = 20)
+  terminator = trm("evals", n_evals = 100)
 
   instance = OptimInstanceQDOSingleCrit$new(
     objective = obfun,
@@ -501,7 +502,7 @@ if (FALSE) {
 
   ftfun = Feature$new("test", ffun, nb, SurrogateSingleCritLearner$new(surrogate$clone(deep = TRUE)))
 
-  terminator = trm("evals", n_evals = 3000)
+  terminator = trm("evals", n_evals = 30000)
 
   instance = OptimInstanceQDOSingleCrit$new(
     objective = obfun,
@@ -513,7 +514,7 @@ if (FALSE) {
   #acq_optimizer = AcqOptimizerRandomSearch$new()
   #acq_optimizer$param_set$values$iters = 10000
   acq_optimizer = AcqOptimizerMutateCrossover$new()
-  n_design = 4 * instance$search_space$length
+  #n_design = 4 * instance$search_space$length
 
   bayesop_bop(instance, acq_function, acq_optimizer)
  
