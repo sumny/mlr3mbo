@@ -15,6 +15,17 @@ Expected Joint Improvement of Elites.
 \item{\code{niches}}{(\link{Niches}).}
 
 \item{\code{y_bests}}{(\code{numeric()}).}
+
+\item{\code{cols_y}}{(\code{character()}).
+#FIXME: Name}
+
+\item{\code{cols_g}}{(\code{character()}).
+#FIXME: Name
+#FIXME: must match ids in NichesBoundaries}
+
+\item{\code{cols_niche}}{(\code{character()}).
+#FIXME: Name
+#FIXME: must match ids in NichesBoundaries}
 }
 \if{html}{\out{</div>}}
 }

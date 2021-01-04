@@ -3,7 +3,7 @@ bayesopt_bop = function(instance, acq_function, acq_optimizer, n_design = 4 * in
   # FIXME: maybe do not have this here, but have a general assert helper
   assert_r6(instance, "OptimInstanceQDO")
   assert_r6(acq_function, "AcqFunction")
-  assert_r6(acq_optimizer, "AcqOptimizer")
+  #assert_r6(acq_optimizer, "AcqOptimizer")
   archive = instance$archive
 
   # FIXME: maybe do not have this here, but have a general init helper
@@ -19,9 +19,10 @@ bayesopt_bop = function(instance, acq_function, acq_optimizer, n_design = 4 * in
   acq_function$setup(archive)  # setup necessary to determine the domain, codomain (for opt direction) of acq function
 
   repeat {
-    acq_function$surrogate$update(xydt = archive_xyg(archive), y_cols = c(archive$cols_y, archive$cols_g))  # update surrogate model with new data
+    acq_function$surrogate$update(xydt = char_to_fct(archive_xyg(archive)), y_cols = c(archive$cols_y, archive$cols_g))  # update surrogate model with new data
     acq_function$update(archive)
     xdt = acq_optimizer$optimize(acq_function)
+    #xdt = acq_optimizer$optimize(acq_function, archive = archive)
     instance$eval_batch(xdt)
     if (instance$is_terminated || instance$terminator$is_terminated(archive)) break
   }
@@ -56,7 +57,7 @@ if (FALSE) {
       ParamDbl$new("g", tags = "feature"),
       ParamFct$new("niche", levels = c("niche1", "niche2"), special_vals = list(NA_character_), tags = "niche"))
     ),
-    properties = "multi-crit",
+    properties = "single-crit",
     id = "test"
   )
   #obfun$eval_dt(data.table(x = c(0, 1.4, 3, 8)))
@@ -73,7 +74,7 @@ if (FALSE) {
 
   acq_function = AcqFunctionEJIE$new(SurrogateMultiCritLearners$new(list(surrogate$clone(deep = TRUE), surrogate$clone(deep = TRUE))), niches = nb)
   acq_optimizer = AcqOptimizer$new(opt("random_search", batch_size = 1000), trm("evals", n_evals = 1000))
-  n_design = 4 * instance$search_space$length
+  #n_design = 4 * instance$search_space$length
 
   bayesopt_bop(instance, acq_function, acq_optimizer)
 
@@ -112,58 +113,67 @@ if (FALSE) {
   library(paradox)
   library(mlr3learners)
 
-  obfun = ObjectiveRFun$new(
-    fun = function(xs) -sin(xs[[1L]] / 2L) + cos(3L * xs[[1L]]),
-    domain = ParamSet$new(list(ParamDbl$new("x", 0, 10))),
-    id = "y"
-  )
-
-  ffun = ObjectiveRFun$new(
-    fun = function(xs) list(g1 = xs[[1L]]^2 / 100, g2 = sqrt(xs[[1L]])),
-    domain = ParamSet$new(list(ParamDbl$new("x", 0, 10))),
-    codomain = ParamSet$new(list(ParamDbl$new("g1", tags = "minimize"), ParamDbl$new("g2", tags = "minimize"))),
-    id = "g"
-  )
-
   nb1 = NicheBoundaries$new("niche1", niche_boundaries = list(g1 = c(0, 0.5), g2 = c(0, 2)))
   nb2 = NicheBoundaries$new("niche2", niche_boundaries = list(g1 = c(0.5, 0.9), g2 = c(2, 3)))
-
   nb = NichesBoundaries$new("test", niches_boundaries = list(niche1 = nb1, niche2 = nb2))
-  #nb$get_niche_dt(ffun$eval_dt(data.table(x = c(0, 1.4, 3, 8))))
 
-  surrogate = lrn("regr.km")
-  surrogate$param_set$values = list(covtype = "matern3_2", optim.method = "gen", jitter = 0)
-
-  ftfun = Feature$new("test", ffun, nb, SurrogateMultiCritLearners$new(list(surrogate$clone(deep = TRUE), surrogate$clone(deep = TRUE))))
+  obfun = ObjectiveRFun$new(
+    fun = function(xs) {
+      g1 = xs[[1L]]^2 / 100
+      g2 = sqrt(xs[[1L]])
+      list(
+        y = -sin(xs[[1L]] / 2L) + cos(3L * xs[[1L]]),
+        g1 = g1,
+        g2 = g2,
+        niche = nb$get_niche(list(g1 = g1, g2 = g2))
+      )
+    },
+    domain = ParamSet$new(list(ParamDbl$new("x", 0, 10))),
+    codomain = ParamSet$new(list(
+      ParamDbl$new("y", tags = "minimize"),
+      ParamDbl$new("g1", tags = "feature"),
+      ParamDbl$new("g2", tags = "feature"),
+      ParamFct$new("niche", levels = c("niche1", "niche2"), special_vals = list(NA_character_), tags = "niche"))
+    ),
+    properties = "single-crit",
+    id = "test"
+  )
+  #obfun$eval_dt(data.table(x = c(0, 1.4, 3, 8)))
 
   terminator = trm("evals", n_evals = 20)
 
   instance = OptimInstanceQDOSingleCrit$new(
     objective = obfun,
-    feature = ftfun,
     terminator = terminator
   )
 
-  acq_function = AcqFunctionEJIE$new(SurrogateSingleCritLearner$new(surrogate$clone(deep = TRUE)))
-  acq_optimizer = AcqOptimizerRandomSearch$new()
-  # n_design = 4 * instance$search_space$length
+  surrogate = lrn("regr.km")
+  surrogate$param_set$values = list(covtype = "matern3_2", optim.method = "gen", nugget.stability = 10^-8)
 
-  bayesop_bop(instance, acq_function, acq_optimizer)
+  acq_function = AcqFunctionEJIE$new(SurrogateMultiCritLearners$new(list(surrogate$clone(deep = TRUE), surrogate$clone(deep = TRUE), surrogate$clone(deep = TRUE))), niches = nb)
+  acq_optimizer = AcqOptimizer$new(opt("random_search", batch_size = 1000), trm("evals", n_evals = 1000))
+  #n_design = 4 * instance$search_space$length
+
+  bayesopt_bop(instance, acq_function, acq_optimizer)
 
   x = seq(from = 0.01, to = 9.99, length.out = 1001)
-  y = obfun$eval_dt(data.table(x = x))[[1L]]
-  g = ffun$eval_dt(data.table(x = x))
-  niche = ftfun$niches$get_niche_dt(data.table(g))[[1L]]
+  dt = obfun$eval_dt(data.table(x = x))
+  y = dt[["y"]]
+  g1 = dt[["g1"]]
+  g2 = dt[["g2"]]
+  niche = dt[["niche"]]
 
   cols = c("red", "green")
   niches = c("niche1", "niche2")
-  y_ = acq_function$surrogate$predict(data.table(x = x))[[1]]
-  g_ = instance$feature$surrogate$predict(data.table(x = x))
+  p = acq_function$surrogate$predict(data.table(x = x))
+  y_ = p[["y"]][["mean"]]
+  g1_ = p[["g1"]][["mean"]]
+  g2_ = p[["g2"]][["mean"]]
 
   df = data.frame(x = x, y = y, col = ifelse(is.na(niche), yes = "black", no = ifelse(niche == "niche1", yes = "red", no = "green")))
 
   best_x = instance$archive$best()[["x"]]
-  best_y = obfun$eval_dt(data.table(x = best_x))[[1L]]
+  best_y = instance$archive$best()[["y"]]
 
   df_point = data.frame(x = best_x, y = best_y)
 
@@ -171,241 +181,6 @@ if (FALSE) {
     geom_line(aes(colour = col, group = 1)) +
     scale_colour_identity() +
     geom_point(aes(x = x, y = y), df_point)
-}
-
-if (FALSE) {
-  # ROC example
-  set.seed(1)
-  devtools::load_all("../bbotk")
-  devtools::load_all()
-  library(paradox)
-  library(mlr3pipelines)
-  library(mlr3learners)
-  library(mlr3tuning)
-  library(mlr3viz)
-  library(precrec)
-
-  lgr::get_logger("mlr3")$set_threshold("warn")
-
-  task = tsk("sonar")
-  learner = lrn("classif.ranger", predict_type = "prob")
-  resampling = rsmp("cv", folds = 10L)
-  measure = msr("classif.auc")
-
-  # FIXME: needs all Tuning classes later
-  #obfun = ObjectiveTuning$new(task = task, learner = learner,
-  #  resampling = resampling, measures = list(measure),
-  #  store_benchmark_result = TRUE,
-  #  store_models = TRUE, check_values = TRUE)
-
-  domain = ParamSet$new(list(
-    ParamInt$new("mtry", lower = 1L, upper = 60L),
-    ParamInt$new("num.trees", lower = 1L, upper = 1000L)))
-
-  #refinstance = TuningInstanceSingleCrit$new(task, learner, resampling, measure, domain, trm("evals", n_evals = 20))
-  #tnr("random_search")$optimize(refinstance) # 5, 401, 0.9380148
-
-  obfun = ObjectiveRFun$new(
-    fun = function(xs) {
-      learner$param_set$values = xs
-      rr = resample(task, learner, resampling)
-      rr$aggregate(measure)
-    },
-    domain = domain,
-    codomain = ParamSet$new(list(ParamDbl$new("y", tags = "maximize"))),
-    id = "y"
-  )
-
-  # FIXME: Need an ObjectiveFeature to be more liberal
-  ffun = ObjectiveRFun$new(
-    fun = function(xs) {
-      learner$param_set$values = xs
-      rr = resample(task, learner, resampling)
-      mod = evalmod(as_precrec(rr), raw_curves = FALSE)
-      dmod = as.data.table(mod)[type == "ROC", c("x", "y")]
-      #plot(mod, "ROC")
-      data.table(roc = list(gx = dmod[["x"]], gy = dmod[["y"]]))
-    },
-    domain = domain,
-    codomain = ParamSet$new(list(ParamDbl$new("roc", tags = "minimize"))),
-    id = "groc",
-    check_values = FALSE
-  )
-
-  e1 = Ellipsoid2D$new("e1", center = c(0., 0.7), radii = c(0.025, 0.025))
-  #e2 = Ellipsoid2D$new("e2", center = c(0.4, 0.8), radii = c(0.05, 0.05))
-  e3 = Ellipsoid2D$new("e3", center = c(0.3, 1), radii = c(0.025, 0.025))
-  #e4 = Ellipsoid2D$new("e4", center = c(0.4, 0.9), radii = c(0.05, 0.1))
-
-  niches = NichesROC$new("test", ellipsoids = list(niche1 = list("e1" = e1), niche2 = list("e3" = e3)))
-
-  surrogate = lrn("regr.ranger")
-
-  ftfun = Feature$new("test", ffun, niches, NULL)
-
-  terminator = trm("evals", n_evals = 1)
-
-  instance = OptimInstanceQDOSingleCrit$new(
-    objective = obfun,
-    feature = ftfun,
-    terminator = terminator
-  )
-
-  acq_function = AcqFunctionEJIE$new(SurrogateSingleCritLearner$new(surrogate$clone(deep = TRUE)))
-  acq_optimizer = AcqOptimizerRandomSearch$new()
-  acq_optimizer$param_set$values$iters = 100
-  #n_design = 4 * instance$search_space$length
-
-  bayesop_bop(instance, acq_function, acq_optimizer)
-
-  par(mfrow = c(1, 2))
-  learner$param_set$values = list(mtry = 18, num.trees = 896)
-  rr = resample(task, learner, resampling)
-  plot(evalmod(as_precrec(rr)), "ROC")
-  learner$param_set$values = list(mtry = 8, num.trees = 617)
-  rr = resample(task, learner, resampling)
-  plot(evalmod(as_precrec(rr)), "ROC")
-}
-
-if (FALSE) {
-  # runtime example
-  set.seed(1)
-  devtools::load_all("../bbotk")
-  devtools::load_all()
-  library(paradox)
-  library(mlr3pipelines)
-  library(mlr3learners)
-  library(mlr3tuning)
-  library(mlr3viz)
-
-  #lgr::get_logger("mlr3")$set_threshold("warn")
-
-  task = tsk("sonar")
-  learner = lrn("classif.ranger", predict_type = "prob")
-  resampling = rsmp("cv", folds = 3L)
-  measure = msr("classif.acc")
-
-  # FIXME: needs all Tuning classes later
-  #obfun = ObjectiveTuning$new(task = task, learner = learner,
-  #  resampling = resampling, measures = list(measure),
-  #  store_benchmark_result = TRUE,
-  #  store_models = TRUE, check_values = TRUE)
-
-  domain = ParamSet$new(list(
-    ParamInt$new("mtry", lower = 1L, upper = 60L),
-    ParamInt$new("num.trees", lower = 1L, upper = 10000L),
-    ParamDbl$new("sample.fraction", lower = 0.1, upper = 1)))
-
-  obfun = ObjectiveRFun$new(
-    fun = function(xs) {
-      learner$param_set$values = xs
-      rr = resample(task, learner, resampling)
-      rr$aggregate(measure)
-    },
-    domain = domain,
-    codomain = ParamSet$new(list(ParamDbl$new("y", tags = "maximize"))),
-    id = "y"
-  )
-
-  # FIXME: Need an ObjectiveFeature to be more liberal
-  ffun = ObjectiveRFun$new(
-    fun = function(xs) {
-      learner$param_set$values = xs
-      learner$train(task)
-      learner$timings["train"]
-    },
-    domain = domain,
-    codomain = ParamSet$new(list(ParamDbl$new("time", tags = "minimize"))),
-    id = "gtime",
-    check_values = FALSE
-  )
-
-  # FIXME: allow for quantile definiton of niche storing times in a container
-  nb1 = NicheBoundaries$new("niche1", niche_boundaries = list(time = c(0, 1)))
-  nb2 = NicheBoundaries$new("niche2", niche_boundaries = list(time = c(1, 10)))
-
-  nb = NichesBoundaries$new("test", niches_boundaries = list(niche1 = nb1, niche2 = nb2))
-
-  surrogate = lrn("regr.km")
-  surrogate$param_set$values = list(covtype = "matern3_2", optim.method = "gen", jitter = 0)
-
-  ftfun = Feature$new("test", ffun, nb, SurrogateSingleCritLearner$new(surrogate$clone(deep = TRUE)))
-
-  terminator = trm("evals", n_evals = 50)
-
-  instance = OptimInstanceQDOSingleCrit$new(
-    objective = obfun,
-    feature = ftfun,
-    terminator = terminator
-  )
-
-  acq_function = AcqFunctionEJIE$new(SurrogateSingleCritLearner$new(surrogate$clone(deep = TRUE)))
-  acq_optimizer = AcqOptimizerRandomSearch$new()
-  #n_design = 4 * instance$search_space$length
-
-  bayesop_bop(instance, acq_function, acq_optimizer)
-
-  # niche2 objective
-  p1 = acq_function$surrogate$predict(data.table(mtry = 1:60, num.trees = 6017, sample.fraction = 0.7519022))
-  p1$lwr = p1$mean - 1.96 * p1$se
-  p1$upr = p1$mean + 1.96 * p1$se
-  p1$mtry = 1:60
-  ggplot(p1, aes(mtry, mean)) +
-    geom_line() +
-    geom_ribbon(aes(ymin = lwr, ymax = upr), alpha =0.3) +
-    labs(x = "mtry") +
-    labs(y = "Mean classif.acc, num.trees = 3707, sample.fraction = 0.883")
-
-  p2 = acq_function$surrogate$predict(data.table(mtry = 24, num.trees = 1:10000, sample.fraction = 0.7519022))
-  p2$lwr = p2$mean - 1.96 * p2$se
-  p2$upr = p2$mean + 1.96 * p2$se
-  p2$num.trees = 1:10000
-  ggplot(p2, aes(num.trees, mean)) +
-    geom_line() +
-    geom_ribbon(aes(ymin = lwr, ymax = upr), alpha =0.3) +
-    labs(x = "num.trees") +
-    labs(y = "Mean Fitting Time, mtry = 54, sample.fraction = 0.883")
-
-  p3 = acq_function$surrogate$predict(data.table(mtry = 24, num.trees = 9068, sample.fraction = seq(0, 1, length.out = 1000)))
-  p3$lwr = p3$mean - 1.96 * p3$se
-  p3$upr = p3$mean + 1.96 * p3$se
-  p3$sample.fraction = seq(0, 1, length.out = 1000)
-  ggplot(p3, aes(sample.fraction, mean)) +
-    geom_line() +
-    geom_ribbon(aes(ymin = lwr, ymax = upr), alpha =0.3) +
-    labs(x = "mtry") +
-    labs(y = "Mean Fitting Time, mtry = 54, num.trees = 3707")
-
-  # niche2 feature
-  p1 = instance$feature$surrogate$predict(data.table(mtry = 1:60, num.trees = 9068, sample.fraction = 0.7519022))
-  p1$lwr = p1$mean - 1.96 * p1$se
-  p1$upr = p1$mean + 1.96 * p1$se
-  p1$mtry = 1:60
-  ggplot(p1, aes(mtry, mean)) +
-    geom_line() +
-    geom_ribbon(aes(ymin = lwr, ymax = upr), alpha =0.3) +
-    labs(x = "mtry") +
-    labs(y = "Mean Fitting Time, num.trees = 3707, sample.fraction = 0.883")
-
-  p2 = instance$feature$surrogate$predict(data.table(mtry = 54, num.trees = 1:10000, sample.fraction = 0.8825619))
-  p2$lwr = p2$mean - 1.96 * p2$se
-  p2$upr = p2$mean + 1.96 * p2$se
-  p2$num.trees = 1:10000
-  ggplot(p2, aes(num.trees, mean)) +
-    geom_line() +
-    geom_ribbon(aes(ymin = lwr, ymax = upr), alpha =0.3) +
-    labs(x = "num.trees") +
-    labs(y = "Mean Fitting Time, mtry = 54, sample.fraction = 0.883")
-
-  p3 = instance$feature$surrogate$predict(data.table(mtry = 54, num.trees = 3707, sample.fraction = seq(0, 1, length.out = 1000)))
-  p3$lwr = p3$mean - 1.96 * p3$se
-  p3$upr = p3$mean + 1.96 * p3$se
-  p3$sample.fraction = seq(0, 1, length.out = 1000)
-  ggplot(p3, aes(sample.fraction, mean)) +
-    geom_line() +
-    geom_ribbon(aes(ymin = lwr, ymax = upr), alpha = 0.3) +
-    labs(x = "mtry") +
-    labs(y = "Mean Fitting Time, mtry = 54, num.trees = 3707")
 }
 
 if (FALSE) {
@@ -425,9 +200,11 @@ if (FALSE) {
 
   #lgr::get_logger("mlr3")$set_threshold("warn")
 
-  #FIXME: surrogate
-
-  domain = ps_tune
+  # FIXME: allow for quantile definiton of niche storing times in a container
+  nb1 = NicheBoundaries$new("niche1", niche_boundaries = list(time = c(log(1), log(3000))))
+  nb2 = NicheBoundaries$new("niche2", niche_boundaries = list(time = c(log(3000), log(5000))))
+  nb3 = NicheBoundaries$new("niche3", niche_boundaries = list(time = c(log(5000), log(10000))))
+  nb = NichesBoundaries$new("test", niches_boundaries = list(niche1 = nb1, niche2 = nb2, niche3 = nb3))
 
   # FIXME: parallel
   obfun = ObjectiveRFun$new(
@@ -436,63 +213,48 @@ if (FALSE) {
       psvals = Filter(Negate(is.null), psvals)
       names(psvals) = fix_name(names(psvals), mode = "r_to_py")
       configspace_config = py$ConfigSpace$Configuration(py$configspace, psvals)
-      py$performance_model$predict(config = configspace_config, representation = "configspace", with_noise = TRUE)
+      time = log(py$runtime_model$predict(config = configspace_config, representation = "configspace"))
+      list(
+        performance = py$performance_model$predict(config = configspace_config, representation = "configspace", with_noise = TRUE),
+        time = time,
+        niche = nb$get_niche(time)
+      )
     },
     domain = ps_tune,
-    codomain = ParamSet$new(list(ParamDbl$new("performance", tags = "maximize"))),
-    id = "yperformance",
-    check_values = FALSE
+    codomain = ParamSet$new(list(
+      ParamDbl$new("performance", tags = "maximize"),
+      ParamDbl$new("time", tags = "feature"),
+      ParamFct$new("niche", levels = c("niche1", "niche2", "niche3"), special_vals = list(NA_character_), tags = "niche"))
+    ),
+    properties = "single-crit",
+    check_values = FALSE,
+    id = "test"
   )
 
-  # FIXME: Need an ObjectiveFeature to be more liberal
-  ffun = ObjectiveRFun$new(
-    fun = function(xs) {
-      psvals = insert_named(xs, map(ps$params[ps$tags == "constant"], "default"))[ps$ids()]
-      psvals = Filter(Negate(is.null), psvals)
-      names(psvals) = fix_name(names(psvals), mode = "r_to_py")
-      configspace_config = py$ConfigSpace$Configuration(py$configspace, py_dict(names(psvals), psvals))
-      log(py$runtime_model$predict(config = configspace_config, representation = "configspace"))
-    },
-    domain = ps_tune,
-    codomain = ParamSet$new(list(ParamDbl$new("runtime", tags = "minimize"))),
-    id = "gruntime",
-    check_values = FALSE
+  terminator = trm("evals", n_evals = 300)
+
+  instance = OptimInstanceQDOSingleCrit$new(
+    objective = obfun,
+    terminator = terminator
   )
 
-  # FIXME: allow for quantile definiton of niche storing times in a container
-  nb1 = NicheBoundaries$new("niche1", niche_boundaries = list(time = c(log(1), log(3000))))
-  nb2 = NicheBoundaries$new("niche2", niche_boundaries = list(time = c(log(3000), log(5000))))
-  nb3 = NicheBoundaries$new("niche3", niche_boundaries = list(time = c(log(5000), log(10000))))
-
-  nb = NichesBoundaries$new("test", niches_boundaries = list(niche1 = nb1, niche2 = nb2, niche3 = nb3))
-
-  surrogate = GraphLearner$new(po("imputeoor")  %>>% lrn("regr.ranger"))
-  surrogate$param_set$values$regr.ranger.se.method = "jack"
-  surrogate$param_set$values$regr.ranger.keep.inbag = TRUE
+  surrogate = GraphLearner$new(po("imputeoor")  %>>% lrn("regr.ranger", num.trees = 500L, keep.inbag = TRUE, se.method = "jack"))
 
   # FIXME: RegrAVG SE aggregation
   #surrogate_rt = GraphLearner$new(po("imputeoor") %>>% po("encode") %>>% lrn("regr.lightgbm"))
 
-  ftfun = Feature$new("test", ffun, nb, SurrogateSingleCritLearner$new(surrogate$clone(deep = TRUE)))
-
-  terminator = trm("evals", n_evals = 30000)
-
-  instance = OptimInstanceQDOSingleCrit$new(
-    objective = obfun,
-    feature = ftfun,
-    terminator = terminator
-  )
-
-  acq_function = AcqFunctionEJIE$new(SurrogateSingleCritLearner$new(surrogate$clone(deep = TRUE)))
-  #acq_optimizer = AcqOptimizerRandomSearch$new()
-  #acq_optimizer$param_set$values$iters = 10000
-  acq_optimizer = AcqOptimizerMutateCrossover$new()
+  acq_function = AcqFunctionEJIE$new(SurrogateMultiCritLearners$new(list(surrogate$clone(deep = TRUE), surrogate$clone(deep = TRUE))), niches = nb)
+  acq_optimizer = AcqOptimizerRandomSearch_old$new()
+  #acq_optimizer = AcqOptimizer$new(opt("random_search", batch_size = 1000), trm("evals", n_evals = 1000))  # FIXME: debug
+  #acq_optimizer = AcqOptimizerMutateCrossover$new()
   #n_design = 4 * instance$search_space$length
+  n_design = 50L
 
-  bayesop_bop(instance, acq_function, acq_optimizer)
+  bayesopt_bop(instance, acq_function, acq_optimizer, n_design = 50L)
 
   # FIXME: rs, other qd-algos
-  #rs = OptimizerRandomSearch$new()
-  #rs$optimize(instance)
+  rs = OptimizerRandomSearch$new()
+  rs$param_set$values$batch_size = 1L
+  rs$optimize(instance)
 }
 

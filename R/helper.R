@@ -36,11 +36,13 @@ archive_x = function(archive) {
 }
 
 char_to_fct = function(xydt) {
+  # FIXME: when and where; actually do not want to copy
+  xydt_ = copy(xydt)
   # Convert character params to factors
-  chr_cols = names(xydt)[map_chr(xydt, class) == "character"]
+  chr_cols = names(xydt_)[map_chr(xydt_, class) == "character"]
   if (length(chr_cols))
-    xydt[, (chr_cols) := map(.SD, as.factor), .SDcols = chr_cols]
-  return(xydt)
+    xydt_[, (chr_cols) := map(.SD, as.factor), .SDcols = chr_cols]
+  return(xydt_)
 }
 
 get_gower_dist = function(x, y = NULL) {

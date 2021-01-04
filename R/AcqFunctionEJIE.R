@@ -14,16 +14,16 @@ AcqFunctionEJIE = R6Class("AcqFunctionEJIE",
     #' @field y_bests (`numeric()`).
     y_bests = NULL,
 
-    #' @filed cols_y (`character()`).
+    #' @field cols_y (`character()`).
     #' #FIXME: Name
     cols_y = NULL,
 
-    #' @filed cols_g (`character()`).
+    #' @field cols_g (`character()`).
     #' #FIXME: Name
     #' #FIXME: must match ids in NichesBoundaries
     cols_g = NULL,
 
-    #' @filed cols_niche (`character()`).
+    #' @field cols_niche (`character()`).
     #' #FIXME: Name
     #' #FIXME: must match ids in NichesBoundaries
     cols_niche = NULL,
