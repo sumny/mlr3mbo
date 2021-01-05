@@ -1,15 +1,18 @@
-#' @title Acquisition Function Expected Joint Improvement of Elites
+#' @title Acquisition Function Expected Improvement of a Niche
 #'
 #' @description
-#' Expected Joint Improvement of Elites.
+#' Expected Improvement of a Niche.
 #'
 #' @export
-AcqFunctionEJIE = R6Class("AcqFunctionEJIE",
+AcqFunctionEIN = R6Class("AcqFunctionEIN",
   inherit = AcqFunction,
   public = list(
 
     #' @field niches ([Niches]).
     niches = NULL,
+
+    #' @field niche_id (`character(1)`).
+    niche_id = NULL,
 
     #' @field y_bests (`numeric()`).
     y_bests = NULL,
@@ -33,10 +36,12 @@ AcqFunctionEJIE = R6Class("AcqFunctionEJIE",
     #'
     #' @param surrogate ([SurrogateMultiCrit]).
     #' @param niches ([Niches]).
-    initialize = function(surrogate, niches) {
+    initialize = function(surrogate, niches, niche_id) {
       assert_r6(surrogate, "SurrogateMultiCrit")
       assert_r6(niches, "Niches")
+      assert_choice(niche_id, names(niches$niches))
       self$niches = niches
+      self$niche_id = niche_id
 
       fun = function(xdt) {
 
@@ -48,17 +53,15 @@ AcqFunctionEJIE = R6Class("AcqFunctionEJIE",
         mu = p[[self$cols_y]]$mean
         se = p[[self$cols_y]]$se
 
-        ei_j = map(names(self$niches$niches), function(niche) {
-          best = self$y_bests[[niche]][[self$cols_y]]
+        best = self$y_bests[[self$niche_id]][[self$cols_y]]
 
-          # FIXME: this does not work; consider mult_max_to_min
-          if (!length(best)) best = self$surrogate_max_to_min[[self$cols_y]] * max(unlist(self$y_bests), na.rm = TRUE)
-          #if (!is.finite(best)) best = 0
+        # FIXME: this does not work; consider mult_max_to_min
+        if (!length(best)) best = self$surrogate_max_to_min[[self$cols_y]] * max(unlist(self$y_bests), na.rm = TRUE)
+        #if (!is.finite(best)) best = 0
 
-          d = best - self$surrogate_max_to_min[[self$cols_y]] * mu
-          d_norm = d / se
-          ei_j = d * pnorm(d_norm) + se * dnorm(d_norm)
-        })
+        d = best - self$surrogate_max_to_min[[self$cols_y]] * mu
+        d_norm = d / se
+        ei_j = d * pnorm(d_norm) + se * dnorm(d_norm)
 
         prob_j = {
         # FIXME: not to model feature function via tags?
@@ -71,33 +74,31 @@ AcqFunctionEJIE = R6Class("AcqFunctionEJIE",
         #    p_j
         #  })
         #} else {
+          # FIXME: sum to 1?
           p_g = p[self$cols_g]
           mu_g = if (is.list(p_g) & !is.data.table(p_g)) map(p_g, "mean") else setNames(list(p_g$mean), nm = self$cols_g)
           se_g = if (is.list(p_g) & !is.data.table(p_g)) map(p_g, "se") else setNames(list(p_g$se), nm = self$cols_g)
 
           if (test_r6(self$niches, classes = "NichesBoundaries")) {
-            map(names(self$niches$niches), function(niche) {
-              boundaries = self$niches$niches[[niche]]$niche_boundaries
-              pj = 1
-              for (id in self$cols_g) {
-                pj = pj * (pnorm((mu_g[[id]] - boundaries[[id]][1L]) / se_g[[id]]) - pnorm((mu_g[[id]] - boundaries[[id]][2L]) / se_g[[id]]))
-              }
-              pj
-            })
+            boundaries = self$niches$niches[[self$niche_id]]$niche_boundaries
+            pj = 1
+            for (id in self$cols_g) {
+              pj = pj * (pnorm((mu_g[[id]] - boundaries[[id]][1L]) / se_g[[id]]) - pnorm((mu_g[[id]] - boundaries[[id]][2L]) / se_g[[id]]))
+            }
+            pj
           }
         }
-        # FIXME: sum to 1?
-        prob_j = prob_j / sum(prob_j)
 
-        ejie = Reduce("+", pmap(list(ei_j, prob_j), function(ec, pc) ec * pc))
+        #ejie = Reduce("+", pmap(list(ei_j, prob_j), function(ec, pc) ec * pc))
+        ein = ei_j * prob_j
 
         # FIXME: we have to check if a point is in a niche, if not, we do not want to propose it at all, i.e, return ejie = 0
-        ejie[se < 1e-20] = 0
+        ein[se < 1e-20] = 0
         #ejie[se < 1e-20 | is.na(niche)] = 0
-        data.table(acq_ejie = ejie)
+        data.table(acq_ein = ein)
       }
 
-      super$initialize("acq_ejie", surrogate = surrogate, direction = "maximize", fun = fun)
+      super$initialize("acq_ein", surrogate = surrogate, direction = "maximize", fun = fun)
     },
 
     #' @description
