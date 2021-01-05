@@ -1,18 +1,13 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
+QDO stuff, WIP
+
 # mlr3mbo
 
-<<<<<<< HEAD
 A new R6 and much more modular implementation for single- and multicrit
 Bayesian optimization. We are really not done here! Very prelim code, so
 beware!
-=======
-FIXME: QDO stuff, WIP
-
-A new R6 and much more modular implementation for single- and multicrit Bayesian optimization.
-We are really not done here! Very prelim code, so beware!
->>>>>>> master
 
 <!-- badges: start -->
 
@@ -61,11 +56,7 @@ acqopt = AcqOptimizerFromOptimizer$new(
   trm("evals", n_evals = 100)
 )
 bayesop_soo(instance, acqfun, acqopt)
-<<<<<<< HEAD
 plot(y~batch_nr, instance$archive$data[batch_nr>1,], type = "b")
-=======
-plot(y~batch_nr, instance$archive$data()[batch_nr>1,], type = "b")
->>>>>>> master
 ```
 
 ## Multipoint through constant liar
@@ -87,5 +78,5 @@ acqopt = AcqOptimizerFromOptimizer$new(
   trm("evals", n_evals = 100)
 )
 bayesop_mpcl(instance, acqfun, acqopt)
-plot(y~batch_nr, instance$archive$data()[batch_nr>1,], type = "b")
+plot(y~batch_nr, instance$archive$data[batch_nr>1,], type = "b")
 ```
