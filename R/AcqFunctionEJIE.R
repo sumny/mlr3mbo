@@ -87,7 +87,6 @@ AcqFunctionEJIE = R6Class("AcqFunctionEJIE",
           }
         }
         # FIXME: sum to 1?
-        prob_j = prob_j / sum(prob_j)
 
         ejie = Reduce("+", pmap(list(ei_j, prob_j), function(ec, pc) ec * pc))
 
