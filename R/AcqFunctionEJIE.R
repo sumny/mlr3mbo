@@ -14,6 +14,13 @@ AcqFunctionEJIE = R6Class("AcqFunctionEJIE",
     #' @field y_bests (`numeric()`).
     y_bests = NULL,
 
+    #' @field bests ([data.table::data.table]).
+    bests = NULL,
+
+    #' @field cols_x (`character()`).
+    #' #FIXME: Name
+    cols_x = NULL,
+
     #' @field cols_y (`character()`).
     #' #FIXME: Name
     cols_y = NULL,
@@ -114,6 +121,7 @@ AcqFunctionEJIE = R6Class("AcqFunctionEJIE",
       self$domain = archive$search_space$clone(deep = TRUE)
       self$domain$trafo = NULL # FIXME: is it okay to do this?
 
+      self$cols_x = archive$cols_x
       self$cols_y = archive$cols_y
       self$cols_g = archive$cols_g
       self$cols_niche = archive$cols_niche
@@ -126,6 +134,7 @@ AcqFunctionEJIE = R6Class("AcqFunctionEJIE",
     update = function(archive) {
       super$update(archive)
       self$y_bests = setNames(transpose_list(archive$best()[, archive$cols_y, with = FALSE]), nm = archive$best()[[archive$cols_niche]])
+      self$bests = archive$best()
     }
   )
 )

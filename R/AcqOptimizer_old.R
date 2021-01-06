@@ -93,9 +93,8 @@ AcqOptimizerMutateCrossover_old = R6Class("AcqOptimizerMutateCrossover_old",
     #' Optimize the acquisition function.
     #'
     #' @param acq_function [AcqFunction].
-    # FIXME: don't pass archive here, restructure acq_function to include best_niches
-    optimize = function(acq_function, archive) {
-      best_niches = archive$best()[, archive$cols_x, with = FALSE]
+    optimize = function(acq_function) {
+      best_niches = acq_function$bests[, acq_function$cols_x, with = FALSE]
       # resolve dependencies by setting up a Design
       #xdt = Design$new(acq_function$search_space,
         #map_dtr(seq_len(self$param_set$values$iters), .f = function(x) mutate_niches(best_niches, acq_function)), remove_dupl = FALSE)$data
@@ -118,9 +117,9 @@ mutate_niches = function(best_niches, acq_function) {
     mutation_prob = runif(number_of_niches, min = 0, max = 1)
     qunif = runif(number_of_niches, min = 0, max = 1)
     mutate = mutation_prob > 0.5
-    value[mutate] = acq_function$search_space$params[[name]]$qunif(qunif[mutate])
+    value[mutate] = acq_function$domain$params[[name]]$qunif(qunif[mutate])
     # FIXME: paradox issue 318
-    if (acq_function$search_space$params[[name]]$storage_type == "integer") {
+    if (acq_function$domain$params[[name]]$storage_type == "integer") {
       as.integer(value)
     } else {
       value
@@ -137,17 +136,17 @@ mutate_niches = function(best_niches, acq_function) {
   # params that are NA need their default here
   best_niches = setDT(imap(best_niches, .f = function(value, name) {
     if (is.na(value)) {
-      acq_function$search_space$params[[name]]$default
+      acq_function$domain$params[[name]]$default
     } else {
       value
     }
   }))
 
-  for(i in seq_len(NROW(acq_function$search_space$deps))) {
-    dep = acq_function$search_space$deps[i, ]
+  for(i in seq_len(NROW(acq_function$domain$deps))) {
+    dep = acq_function$domain$deps[i, ]
 
     if (any(map_lgl(dep[["cond"]], .f = function(cond) cond$test(best_niches[[dep[["on"]]]])) == FALSE)) {
-      best_niches[[dep[["id"]]]] = switch(acq_function$search_space$storage_type[[dep[["id"]]]], "integer" = NA_integer_, "double" = NA_real_, "character" = NA_character_)
+      best_niches[[dep[["id"]]]] = switch(acq_function$domain$storage_type[[dep[["id"]]]], "integer" = NA_integer_, "double" = NA_real_, "character" = NA_character_)
     }
   }
 
