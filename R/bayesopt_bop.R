@@ -72,8 +72,9 @@ if (FALSE) {
   surrogate = lrn("regr.km")
   surrogate$param_set$values = list(covtype = "matern3_2", optim.method = "gen", nugget.stability = 10^-8)
 
-  acq_function = AcqFunctionEIN$new(SurrogateMultiCritLearners$new(list(surrogate$clone(deep = TRUE), surrogate$clone(deep = TRUE))), niches = nb, niche_id = "niche1")
-  acq_optimizer = AcqOptimizer$new(opt("random_search", batch_size = 1000), trm("evals", n_evals = 1000))
+  acq_function = AcqFunctionEJIE$new(SurrogateMultiCritLearners$new(list(surrogate$clone(deep = TRUE), surrogate$clone(deep = TRUE))), niches = nb)
+  acq_optimizer = AcqOptimizerMutateCrossover_old$new()
+  acq_optimizer$param_set$values$niches = FALSE
   #n_design = 4 * instance$search_space$length
 
   bayesopt_bop(instance, acq_function, acq_optimizer)

@@ -84,9 +84,10 @@ AcqOptimizerMutateCrossover_old = R6Class("AcqOptimizerMutateCrossover_old",
     #' Creates a new instance of this [R6][R6::R6Class] class.
     initialize = function() {
       self$param_set = ParamSet$new(list(
-        ParamInt$new("iters", lower = 1L, default = 1000L)
+        ParamInt$new("iters", lower = 1L),
+        ParamLgl$new("niches")
       ))
-      self$param_set$values$iters = 1000L
+      self$param_set$values = list(iters = 1000L, niches = TRUE)
     },
 
     #' @description
@@ -94,7 +95,11 @@ AcqOptimizerMutateCrossover_old = R6Class("AcqOptimizerMutateCrossover_old",
     #'
     #' @param acq_function [AcqFunction].
     optimize = function(acq_function) {
-      best_niches = acq_function$bests[, acq_function$cols_x, with = FALSE]
+      best_niches = if (self$param_set$values$niches) {
+        acq_function$bests[, acq_function$cols_x, with = FALSE]
+      } else {
+        acq_function$archive_data[, acq_function$cols_x, with = FALSE]
+      }
       # resolve dependencies by setting up a Design
       #xdt = Design$new(acq_function$search_space,
         #map_dtr(seq_len(self$param_set$values$iters), .f = function(x) mutate_niches(best_niches, acq_function)), remove_dupl = FALSE)$data

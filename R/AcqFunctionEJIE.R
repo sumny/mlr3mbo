@@ -17,6 +17,9 @@ AcqFunctionEJIE = R6Class("AcqFunctionEJIE",
     #' @field bests ([data.table::data.table]).
     bests = NULL,
 
+    # @field archive_data ([data.table::data.table]).
+    archive_data = NULL,
+
     #' @field cols_x (`character()`).
     #' #FIXME: Name
     cols_x = NULL,
@@ -135,6 +138,7 @@ AcqFunctionEJIE = R6Class("AcqFunctionEJIE",
       super$update(archive)
       self$y_bests = setNames(transpose_list(archive$best()[, archive$cols_y, with = FALSE]), nm = archive$best()[[archive$cols_niche]])
       self$bests = archive$best()
+      self$archive_data = archive$data
     }
   )
 )
