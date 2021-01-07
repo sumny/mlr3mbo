@@ -16,6 +16,11 @@ Expected Joint Improvement of Elites.
 
 \item{\code{y_bests}}{(\code{numeric()}).}
 
+\item{\code{bests}}{(\link[data.table:data.table]{data.table::data.table}).}
+
+\item{\code{cols_x}}{(\code{character()}).
+#FIXME: Name}
+
 \item{\code{cols_y}}{(\code{character()}).
 #FIXME: Name}
 

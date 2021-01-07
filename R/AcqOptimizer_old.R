@@ -27,7 +27,7 @@ AcqOptimizer_old = R6Class("AcqOptimizer_old",
 #' @title Acquisition Optimizer Random Search
 #'
 #' @description
-#' `AcqOptimizerRandomSearch` class that implements a random search for the
+#' `AcqOptimizerRandomSearch_old` class that implements a random search for the
 #' optimization of acquisition functions.
 #'
 #' @export
@@ -43,7 +43,7 @@ AcqOptimizerRandomSearch_old = R6Class("AcqOptimizerRandomSearch_old",
     #' Creates a new instance of this [R6][R6::R6Class] class.
     initialize = function() {
       self$param_set = ParamSet$new(list(
-        ParamInt$new("iters", lower = 1L, default = 1000L)
+        ParamInt$new("iters", lower = 1L)
       ))
       self$param_set$values$iters = 1000L
     },
@@ -60,6 +60,92 @@ AcqOptimizerRandomSearch_old = R6Class("AcqOptimizerRandomSearch_old",
         best = sample(best, 1)
       }
       xdt[best, ]
+    }
+))
+
+
+
+#' @title Acquisition Optimizer MIES
+#'
+#' @description
+#' `AcqOptimizerMIES_old` class that uses [CEGO::optimMIES] for the
+#' optimization of acquisition functions.
+#'
+#'
+#' @export
+AcqOptimizerMIES_old = R6Class("AcqOptimizerMIES_old",
+  inherit = AcqOptimizer_old,
+
+  public = list(
+
+    #' @field param_set ([paradox::ParamSet]).
+    param_set = NULL,
+
+    #' @description
+    #' Creates a new instance of this [R6][R6::R6Class] class.
+    initialize = function() {
+      self$param_set = ParamSet$new(list(
+        ParamInt$new("budget", lower = 1L),
+        ParamInt$new("population", lower = 1L),
+        ParamInt$new("generations", lower = 1L),
+        ParamLgl$new("niches"))
+      )
+      self$param_set$values = list(budget = 1, population = 1, generations = 20L, niches = TRUE)
+    },
+
+    #' @description
+    #' Optimize the acquisition function.
+    #'
+    #' @param acq_function [AcqFunction].
+    optimize = function(acq_function) {
+      fun = function(x) {
+        mult_max_to_min(acq_function$codomain) * unlist(acq_function$eval_dt(setNames(transpose(as.data.table(x)), nm = acq_function$domain$ids())))
+      }
+      # FIXME: CEGO with custom start design is buggy af
+      get_sigma0 = function(ps) {
+        map_dbl(ps$params, .f = function(param) {
+          switch(class(param)[1L],
+            "ParamDbl" = (param$upper - param$lower) * 0.1,
+            "ParamInt" = (param$upper - param$lower) * (1 / 3),
+            "ParamFct" = 0.1
+          )
+        })
+      }
+      #if (is.null(sigma0)){
+     	#	sigma0 <- numeric(npar)
+		  #  sigma0[ireal] <- ranges[ireal] * 0.1
+		  #  sigma0[iint] <- ranges[iint] * 0.33
+		  #  sigma0[icat] <- 0.1
+	    #}
+      #creationFunction <- function(){
+	    #  x <- numeric(npar)
+		  #  if(length(ireal)>0)
+		  #  	x[ireal] <- runif(nreal,lower[ireal],upper[ireal])
+		  #  if(length(iint)>0)
+		  #  	x[iint] <- floor(runif(nint,lower[iint],upper[iint]+ 1-.Machine$double.eps ))
+		  #  if(length(icat)>0)
+		  #  	x[icat] <- sapply(levels[icat], sample,1,simplify=T)
+		  #  ## append strategy parameters
+		  #  x <- c(x,sigma0)
+		  #  x
+      #}
+      # FIXME: currently always use best_niches + 1 random
+      best_niches = if (self$param_set$values$niches) {
+        acq_function$bests[, acq_function$cols_x, with = FALSE]
+      } else {
+        acq_function$archive_data[, acq_function$cols_x, with = FALSE]
+      }
+      xdt = cbind(rbind(best_niches, generate_design_random(acq_function$domain, 1)$data), sigma0 = get_sigma0(acq_function$domain))
+      x = as.list(transpose(xdt))
+
+      mies_res = CEGO::optimMIES(x = NULL, fun = fun,
+        control = list(budget = Inf,
+          popsize = NROW(best_niches) + 1L, vectorized = TRUE,
+          generations = self$param_set$values$generations,
+          types = acq_function$domain$storage_type,
+          lower = unlist(map(acq_function$domain$params, "lower")),
+          upper = unlist(map(acq_function$domain$params, "upper"))))
+      setNames(as.data.table(mies_res$xbest), nm = acq_function$domain$ids())
     }
 ))
 

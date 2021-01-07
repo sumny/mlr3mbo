@@ -4,7 +4,7 @@
 \alias{AcqOptimizerRandomSearch_old}
 \title{Acquisition Optimizer Random Search}
 \description{
-\code{AcqOptimizerRandomSearch} class that implements a random search for the
+\code{AcqOptimizerRandomSearch_old} class that implements a random search for the
 optimization of acquisition functions.
 }
 \section{Super class}{

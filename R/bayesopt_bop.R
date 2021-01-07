@@ -73,8 +73,7 @@ if (FALSE) {
   surrogate$param_set$values = list(covtype = "matern3_2", optim.method = "gen", nugget.stability = 10^-8)
 
   acq_function = AcqFunctionEJIE$new(SurrogateMultiCritLearners$new(list(surrogate$clone(deep = TRUE), surrogate$clone(deep = TRUE))), niches = nb)
-  acq_optimizer = AcqOptimizerMutateCrossover_old$new()
-  acq_optimizer$param_set$values$niches = FALSE
+  acq_optimizer = AcqOptimizerMIES_old$new()
   #n_design = 4 * instance$search_space$length
 
   bayesopt_bop(instance, acq_function, acq_optimizer)
