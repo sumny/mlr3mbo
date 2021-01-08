@@ -135,7 +135,7 @@ AcqOptimizerMIES_old = R6Class("AcqOptimizerMIES_old",
       } else {
         acq_function$archive_data[, acq_function$cols_x, with = FALSE]
       }
-      xdt = cbind(rbind(best_niches, generate_design_random(acq_function$domain, 1)$data), sigma0 = get_sigma0(acq_function$domain))
+      xdt = cbind(rbind(best_niches, generate_design_random(acq_function$domain, 1)$data), sigma0 = t(replicate(NROW(best_niches) + 1L, get_sigma0(acq_function$domain))))
       x = as.list(transpose(xdt))
 
       mies_res = CEGO::optimMIES(x = NULL, fun = fun,
@@ -145,7 +145,7 @@ AcqOptimizerMIES_old = R6Class("AcqOptimizerMIES_old",
           types = acq_function$domain$storage_type,
           lower = unlist(map(acq_function$domain$params, "lower")),
           upper = unlist(map(acq_function$domain$params, "upper"))))
-      setNames(as.data.table(mies_res$xbest), nm = acq_function$domain$ids())
+      setNames(transpose(as.data.table(mies_res$xbest)), nm = acq_function$domain$ids())
     }
 ))
 
