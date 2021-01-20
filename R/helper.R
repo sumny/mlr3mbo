@@ -35,13 +35,20 @@ archive_x = function(archive) {
   archive$data[, archive$cols_x, with = FALSE]
 }
 
-char_to_fct = function(xydt) {
+char_to_fct = function(xydt, ps) {
   # FIXME: when and where; actually do not want to copy
   xydt_ = copy(xydt)
   # Convert character params to factors
   chr_cols = names(xydt_)[map_chr(xydt_, class) == "character"]
-  if (length(chr_cols))
-    xydt_[, (chr_cols) := map(.SD, as.factor), .SDcols = chr_cols]
+  if (length(chr_cols)) {
+    xydt_[, (chr_cols) := imap(.SD, function(x, id) {
+      if (class(ps$params[[id]])[1L] == "ParamFct") {
+        factor(x, levels = ps$params[[id]]$levels)
+      } else {
+        as.factor(x)
+      }
+    }), .SDcols = chr_cols]
+  }
   return(xydt_)
 }
 
