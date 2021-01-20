@@ -19,7 +19,7 @@ bayesopt_bop = function(instance, acq_function, acq_optimizer, n_design = 4 * in
   acq_function$setup(archive)  # setup necessary to determine the domain, codomain (for opt direction) of acq function
 
   repeat {
-    acq_function$surrogate$update(xydt = char_to_fct(archive_xyg(archive)), y_cols = c(archive$cols_y, archive$cols_g))  # update surrogate model with new data
+    acq_function$surrogate$update(xydt = char_to_fct(archive_xyg(archive), ps = instance$search_space), y_cols = c(archive$cols_y, archive$cols_g))  # update surrogate model with new data
     acq_function$update(archive)
     xdt = acq_optimizer$optimize(acq_function)
     #xdt = acq_optimizer$optimize(acq_function, archive = archive)
