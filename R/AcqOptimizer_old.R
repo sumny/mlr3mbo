@@ -112,24 +112,7 @@ AcqOptimizerMIES_old = R6Class("AcqOptimizerMIES_old",
           )
         })))
       }
-      #if (is.null(sigma0)){
-     	#	sigma0 <- numeric(npar)
-		  #  sigma0[ireal] <- ranges[ireal] * 0.1
-		  #  sigma0[iint] <- ranges[iint] * 0.33
-		  #  sigma0[icat] <- 0.1
-	    #}
-      #creationFunction <- function(){
-	    #  x <- numeric(npar)
-		  #  if(length(ireal)>0)
-		  #  	x[ireal] <- runif(nreal,lower[ireal],upper[ireal])
-		  #  if(length(iint)>0)
-		  #  	x[iint] <- floor(runif(nint,lower[iint],upper[iint]+ 1-.Machine$double.eps ))
-		  #  if(length(icat)>0)
-		  #  	x[icat] <- sapply(levels[icat], sample,1,simplify=T)
-		  #  ## append strategy parameters
-		  #  x <- c(x,sigma0)
-		  #  x
-      #}
+
       # FIXME: currently always use best_niches + 1 random
       if (self$param_set$values$classical) {
         mies_res = CEGO::optimMIES(x = NULL, fun = fun,
