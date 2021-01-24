@@ -36,6 +36,7 @@ AcqFunctionEIN = R6Class("AcqFunctionEIN",
     #'
     #' @param surrogate ([SurrogateMultiCrit]).
     #' @param niches ([Niches]).
+    #' @param niche_id (`character(1)`).
     initialize = function(surrogate, niches, niche_id) {
       assert_r6(surrogate, "SurrogateMultiCrit")
       assert_r6(niches, "Niches")

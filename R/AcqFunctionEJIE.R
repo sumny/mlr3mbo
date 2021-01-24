@@ -17,7 +17,7 @@ AcqFunctionEJIE = R6Class("AcqFunctionEJIE",
     #' @field bests ([data.table::data.table]).
     bests = NULL,
 
-    # @field archive_data ([data.table::data.table]).
+    #' @field archive_data ([data.table::data.table]).
     archive_data = NULL,
 
     #' @field cols_x (`character()`).

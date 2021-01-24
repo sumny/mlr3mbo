@@ -66,6 +66,8 @@ Creates a new instance of this \link[R6:R6Class]{R6} class.
 \item{\code{surrogate}}{(\link{SurrogateMultiCrit}).}
 
 \item{\code{niches}}{(\link{Niches}).}
+
+\item{\code{niche_id}}{(\code{character(1)}).}
 }
 \if{html}{\out{</div>}}
 }

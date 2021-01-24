@@ -18,10 +18,13 @@ AcqFunctionMESN = R6Class("AcqFunctionMESN",
     #' @field bests ([data.table::data.table]).
     bests = NULL,
 
+    #' @field archive_data ([data.table::data.table]).
+    archive_data = NULL,
+
     #' @field grid [data.table::data.table]
     grid = NULL,
 
-    #' @field maxes (`numeric()`).
+    #' @field maxesn (`list()`).
     maxesn = NULL,
 
     #' @field cols_x (`character()`).
@@ -46,6 +49,7 @@ AcqFunctionMESN = R6Class("AcqFunctionMESN",
     #' Creates a new instance of this [R6][R6::R6Class] class.
     #'
     #' @param surrogate [SurrogateSingleCrit].
+    #' @param niches ([Niches]).
     initialize = function(surrogate, niches) {
       assert_r6(surrogate, "SurrogateMultiCrit")
       assert_r6(niches, "Niches")
@@ -106,6 +110,7 @@ AcqFunctionMESN = R6Class("AcqFunctionMESN",
     update = function(archive) {
       super$update(archive)
       self$bests = archive$best()
+      self$archive_data = archive$data
       self$maxesn = get_maxesn(x = archive$data[, archive$cols_x, with = FALSE], grid = self$grid, surrogate = self$surrogate, surrogate_max_to_min = self$surrogate_max_to_min, cols_y = self$cols_y, cols_g = self$cols_g, niches = self$niches)
     }
   )

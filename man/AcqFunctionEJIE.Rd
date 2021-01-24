@@ -18,6 +18,8 @@ Expected Joint Improvement of Elites.
 
 \item{\code{bests}}{(\link[data.table:data.table]{data.table::data.table}).}
 
+\item{\code{archive_data}}{(\link[data.table:data.table]{data.table::data.table}).}
+
 \item{\code{cols_x}}{(\code{character()}).
 #FIXME: Name}
 

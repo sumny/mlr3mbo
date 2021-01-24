@@ -19,6 +19,7 @@ Other Acquisition Function:
 \code{\link{AcqFunctionAEI}},
 \code{\link{AcqFunctionCB}},
 \code{\link{AcqFunctionEI}},
+\code{\link{AcqFunctionMESN}},
 \code{\link{AcqFunctionSmsEgo}},
 \code{\link{AcqFunction}}
 }
