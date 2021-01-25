@@ -91,7 +91,7 @@ AcqFunctionMESN = R6Class("AcqFunctionMESN",
       self$surrogate_max_to_min = mult_max_to_min(archive$codomain)
 
       self$domain = archive$search_space$clone(deep = TRUE)
-      self$domain$trafo = NULL # FIXME is it okay to do this?
+      #self$domain$trafo = NULL # FIXME is it okay to do this?
 
       self$cols_x = archive$cols_x
       self$cols_y = archive$cols_y
@@ -99,7 +99,7 @@ AcqFunctionMESN = R6Class("AcqFunctionMESN",
       self$cols_niche = archive$cols_niche
 
       if (is.null(self$grid)) {
-        self$grid = generate_design_lhs(self$domain, n = 10000L)$data  # FIXME: this does scale extremely poorly
+        self$grid = generate_design_lhs(self$domain, n = 1000L)$data  # FIXME: this does scale extremely poorly
       }
     },
 
@@ -155,44 +155,57 @@ get_maxesn = function(nK = 10000L, x, grid, surrogate, surrogate_max_to_min, col
   }
   names(prob_j) = names(niches$niches)
   setDT(prob_j)
-  argmax_prob_j = names(prob_j)[apply(prob_j, MARGIN = 1L, FUN = which.max)]
+  argmax_prob_j = c(names(prob_j), NA_character_)[apply(prob_j, MARGIN = 1L, FUN = function(x) {
+    tmp = which(x > 0.99)
+    if (length(tmp) == 0L) length(x) + 1L else tmp
+  })]
 
   setNames(map(names(niches$niches), function(niche) {
 
     ids = which(argmax_prob_j == niche)
-    if (length(ids) == 0L) return(NULL)  # early exit
+    if (length(ids) == 0L) {
+      return(NULL)  # early exit
+    }
 
     mu_max = max(- surrogate_max_to_min[[cols_y]] * mu[ids])
 
     left = mu_max
-    leftprob = probf(left, mu = mu[ids], se = se[ids], surrogate_max_to_min = surrogate_max_to_min[[cols_y]])
-    while (leftprob > 0.1) {
+    leftprob = probf(left, mu = mu[ids], se = se[ids], surrogate_max_to_min = surrogate_max_to_min[[cols_y]], prob_j = prob_j[[niche]][ids])
+    # FIXME:
+    ntry = 0L
+    while (leftprob > 0.50 && ntry < 3L) {
       left = if (left > 0.01) left / 2 else 2 * left - 0.05
-      leftprob = probf(left, mu = mu[ids], se = se[ids], surrogate_max_to_min = surrogate_max_to_min[[cols_y]])
+      leftprob = probf(left, mu = mu[ids], se = se[ids], surrogate_max_to_min = surrogate_max_to_min[[cols_y]], prob_j = prob_j[[niche]][ids])
+      ntry = ntry + 1L
     }
 
+    ntry = 0L
     right = max(- surrogate_max_to_min[[cols_y]] * (mu[ids] - (surrogate_max_to_min[[cols_y]] * 5 * se[ids])))
-    rightprob = probf(right, mu = mu[ids], se = se[ids], surrogate_max_to_min = surrogate_max_to_min[[cols_y]])
-    while (rightprob < 0.95) {
+    rightprob = probf(right, mu = mu[ids], se = se[ids], surrogate_max_to_min = surrogate_max_to_min[[cols_y]], prob_j = prob_j[[niche]][ids])
+    while (rightprob < 0.50 && ntry < 3L) {
       right = right + right - left
-      rightprob = probf(right, mu = mu[ids], se = se[ids], surrogate_max_to_min = surrogate_max_to_min[[cols_y]])
+      rightprob = probf(right, mu = mu[ids], se = se[ids], surrogate_max_to_min = surrogate_max_to_min[[cols_y]], prob_j = prob_j[[niche]][ids])
+      ntry = ntry + 1L
+    }
+
+    if (leftprob > 0.50 || rightprob < 0.50) {
+      return(mu_max + runif(nK, min = 0, max = 1))
     }
 
     mgrid = seq(from = left, to = right, length.out = 100L)
 
-    prob = apply(pnorm(
-      (matrix(mgrid, nrow = NROW(mu[ids]), ncol = 100L, byrow = TRUE) - matrix(mu[ids], nrow = NROW(mu[ids]), ncol = 100L)) /
-      matrix(se[ids], nrow = NROW(mu[ids]), ncol = 100L)),
-    MARGIN = 1L, FUN = prod)
+    prob = map_dbl(mgrid, function(mg) {
+      prod(pnorm((mg - (- surrogate_max_to_min[[cols_y]] * mu[ids])) / se[ids]))
+    })
 
     if (sum(prob > 0.05 & prob < 0.95) == 0L) {
       return(mu_max + runif(nK, min = 0, max = 1))
     }
 
     # Gumbel sampling
-    q1 = optimize(function(x) abs(probf(x, mu = mu[ids], se = se[ids], surrogate_max_to_min = surrogate_max_to_min[[cols_y]]) - 0.25), interval = range(mgrid))$minimum
-    q2 = optimize(function(x) abs(probf(x, mu = mu[ids], se = se[ids], surrogate_max_to_min = surrogate_max_to_min[[cols_y]]) - 0.5), interval = range(mgrid))$minimum
-    q3 = optimize(function(x) abs(probf(x, mu = mu[ids], se = se[ids], surrogate_max_to_min = surrogate_max_to_min[[cols_y]]) - 0.75), interval = range(mgrid))$minimum
+    q1 = optimize(function(x) abs(probf(x, mu = mu[ids], se = se[ids], surrogate_max_to_min = surrogate_max_to_min[[cols_y]], prob_j = prob_j[[niche]][ids]) - 0.25), interval = range(mgrid))$minimum
+    q2 = optimize(function(x) abs(probf(x, mu = mu[ids], se = se[ids], surrogate_max_to_min = surrogate_max_to_min[[cols_y]], prob_j = prob_j[[niche]][ids]) - 0.5), interval = range(mgrid))$minimum
+    q3 = optimize(function(x) abs(probf(x, mu = mu[ids], se = se[ids], surrogate_max_to_min = surrogate_max_to_min[[cols_y]], prob_j = prob_j[[niche]][ids]) - 0.75), interval = range(mgrid))$minimum
     beta = (q1 - q3) / (log(log(4 / 3)) - log(log(4)))  # FIXME: assert beta > 0
     alpha = q2 + beta * log(log(2))
 
@@ -203,7 +216,7 @@ get_maxesn = function(nK = 10000L, x, grid, surrogate, surrogate_max_to_min, col
 
 
 
-probf = function(mu_, mu, se, surrogate_max_to_min) {
-  prod(pnorm((mu_ - (- surrogate_max_to_min * mu)) / se))
+probf = function(mu_, mu, se, surrogate_max_to_min, prob_j) {
+  prod(pnorm((mu_ - (- surrogate_max_to_min * mu)) / se) * prob_j)
 }
 

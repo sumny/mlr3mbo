@@ -115,7 +115,7 @@ AcqFunctionEIN = R6Class("AcqFunctionEIN",
       self$surrogate_max_to_min = mult_max_to_min(archive$codomain)
 
       self$domain = archive$search_space$clone(deep = TRUE)
-      self$domain$trafo = NULL # FIXME: is it okay to do this?
+      #self$domain$trafo = NULL # FIXME: is it okay to do this?
 
       self$cols_y = archive$cols_y
       self$cols_g = archive$cols_g
