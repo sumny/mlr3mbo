@@ -55,9 +55,9 @@ AcqOptimizerRandomSearch_old = R6Class("AcqOptimizerRandomSearch_old",
     optimize = function(acq_function) {
       xdt = generate_design_random(acq_function$domain, self$param_set$values$iters)$data
       ydt = acq_function$eval_dt(char_to_fct(xdt, ps = acq_function$domain)) * mult_max_to_min(acq_function$codomain)
-      best = which(ydt[[1]] == min(ydt[[1]]))
-      if (length(best) > 1) {
-        best = sample(best, 1)
+      best = which(ydt[[1L]] == min(ydt[[1L]]))
+      if (length(best) > 1L) {
+        best = sample(best, 1L)
       }
       xdt[best, ]
     }
@@ -88,10 +88,9 @@ AcqOptimizerMIES_old = R6Class("AcqOptimizerMIES_old",
         ParamLgl$new("classical"),
         ParamInt$new("budget", lower = 1L),
         ParamInt$new("popsize", lower = 1L),
-        ParamInt$new("generations", lower = 1L),
         ParamLgl$new("niches"))
       )
-      self$param_set$values = list(classical = FALSE, budget = 500L, popsize = 50L, generations = 100L, niches = TRUE)
+      self$param_set$values = list(classical = FALSE, budget = 1000L, popsize = 100L, niches = TRUE)
     },
 
     #' @description
@@ -113,7 +112,7 @@ AcqOptimizerMIES_old = R6Class("AcqOptimizerMIES_old",
         })))
       }
 
-      # FIXME: currently always use best_niches + 1 random
+      # FIXME: currently always uses best_niches + 1 random
       if (self$param_set$values$classical) {
         mies_res = CEGO::optimMIES(x = NULL, fun = fun,
           control = list(budget = self$param_set$values$budget,
@@ -124,18 +123,19 @@ AcqOptimizerMIES_old = R6Class("AcqOptimizerMIES_old",
             upper = unlist(map(acq_function$domain$params, "upper"))))
         setNames(transpose(as.data.table(mies_res$xbest)), nm = acq_function$domain$ids())
       } else {
+        # FIXME: currently always uses best_niches + 1 random
         best_niches = if (self$param_set$values$niches) {
           acq_function$bests[, acq_function$cols_x, with = FALSE]
         } else {
           acq_function$archive_data[, acq_function$cols_x, with = FALSE]
         }
-        xdt = cbind(rbind(best_niches, generate_design_random(acq_function$domain, 1L)$data), sigma0 = get_sigma0(acq_function$domain))
+        xdt = cbind(best_niches, sigma0 = get_sigma0(acq_function$domain))
         x = as.list(transpose(xdt))
 
         mies_res = CEGO::optimMIES(x = x, fun = fun,
-          control = list(budget = Inf,
+          control = list(budget = self$param_set$values$budget,
             popsize = length(x), vectorized = TRUE,
-            generations = self$param_set$values$generations,
+            generations = Inf,
             types = acq_function$domain$storage_type,
             lower = unlist(map(acq_function$domain$params, "lower")),
             upper = unlist(map(acq_function$domain$params, "upper"))))
@@ -219,7 +219,7 @@ mutate_niches = function(best_niches, acq_function) {
     }))
   }
 
-  # params that are NA need their default here
+  # FIXME: params that are NA need their default here
   best_niches = setDT(imap(best_niches, .f = function(value, name) {
     if (is.na(value)) {
       acq_function$domain$params[[name]]$default
