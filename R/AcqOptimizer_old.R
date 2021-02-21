@@ -24,6 +24,47 @@ AcqOptimizer_old = R6Class("AcqOptimizer_old",
 
 
 
+#' @title Acquisition Optimizer Random Search
+#'
+#' @description
+#' `AcqOptimizerRandomSearch_old` class that implements a random search for the
+#' optimization of acquisition functions.
+#'
+#' @export
+AcqOptimizerRandomSearch_old = R6Class("AcqOptimizerRandomSearch_old",
+  inherit = AcqOptimizer_old,
+
+  public = list(
+
+    #' @field param_set ([paradox::ParamSet]).
+    param_set = NULL,
+
+    #' @description
+    #' Creates a new instance of this [R6][R6::R6Class] class.
+    initialize = function() {
+      self$param_set = ParamSet$new(list(
+        ParamInt$new("iters", lower = 1L)
+      ))
+      self$param_set$values$iters = 1000L
+    },
+
+    #' @description
+    #' Optimize the acquisition function.
+    #'
+    #' @param acq_function [AcqFunction].
+    optimize = function(acq_function) {
+      xdt = generate_design_random(acq_function$domain, self$param_set$values$iters)$data
+      ydt = acq_function$eval_dt(char_to_fct(xdt, ps = acq_function$domain)) * mult_max_to_min(acq_function$codomain)
+      best = which(ydt[[1L]] == min(ydt[[1L]]))
+      if (length(best) > 1L) {
+        best = sample(best, 1L)
+      }
+      xdt[best, ]
+    }
+))
+
+
+
 #' @title Acquisition Optimizer Random Search Bananas Trafo
 #'
 #' @description
