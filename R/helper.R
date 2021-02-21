@@ -23,9 +23,16 @@ feature_types_to_param_classes = function(feature_types) {
   param_classes[c("logical", "integer", "numeric", "factor") %in% feature_types]
 }
 
+
+
 archive_xyg = function(archive) {
   archive$data[, c(archive$cols_x, archive$cols_y, archive$cols_g), with = FALSE]
 }
+
+archive_bananasyg = function(archive) {
+  archive$data[, c(grep("V", colnames(archive$data), value = TRUE), archive$cols_y, archive$cols_g), with = FALSE]
+}
+
 
 archive_xy = function(archive) {
   archive$data[, c(archive$cols_x, archive$cols_y), with = FALSE]

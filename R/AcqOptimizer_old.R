@@ -24,14 +24,14 @@ AcqOptimizer_old = R6Class("AcqOptimizer_old",
 
 
 
-#' @title Acquisition Optimizer Random Search
+#' @title Acquisition Optimizer Random Search Bananas Trafo
 #'
 #' @description
 #' `AcqOptimizerRandomSearch_old` class that implements a random search for the
 #' optimization of acquisition functions.
 #'
 #' @export
-AcqOptimizerRandomSearch_old = R6Class("AcqOptimizerRandomSearch_old",
+AcqOptimizerRandomSearch_old_trafo = R6Class("AcqOptimizerRandomSearch_old_trafo",
   inherit = AcqOptimizer_old,
 
   public = list(
@@ -53,13 +53,14 @@ AcqOptimizerRandomSearch_old = R6Class("AcqOptimizerRandomSearch_old",
     #'
     #' @param acq_function [AcqFunction].
     optimize = function(acq_function) {
-      xdt = generate_design_random(acq_function$domain, self$param_set$values$iters)$data
-      ydt = acq_function$eval_dt(char_to_fct(xdt, ps = acq_function$domain)) * mult_max_to_min(acq_function$codomain)
+      xdt = generate_design_random(acq_function$domain, self$param_set$values$iters)
+      txdt = as.data.table(do.call(rbind, xdt$transpose()))
+      ydt = acq_function$eval_dt(txdt) * mult_max_to_min(acq_function$codomain)
       best = which(ydt[[1L]] == min(ydt[[1L]]))
       if (length(best) > 1L) {
         best = sample(best, 1L)
       }
-      xdt[best, ]
+      xdt$data[best, ]
     }
 ))
 
