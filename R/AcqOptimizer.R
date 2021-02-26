@@ -43,6 +43,7 @@ AcqOptimizer = R6Class("AcqOptimizer",
     #'
     #' @return [data.table::data.table()] with 1 row per optimum and x as columns.
     optimize = function(acq_function, archive) {
+      browser()
       if (acq_function$codomain$length == 1L) {
         instance = OptimInstanceSingleCrit$new(objective = acq_function, terminator = self$terminator)
       } else {
