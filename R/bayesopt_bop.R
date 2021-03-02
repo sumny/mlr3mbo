@@ -3,7 +3,7 @@ bayesopt_bop = function(instance, acq_function, acq_optimizer, n_design = 4 * in
   # FIXME: maybe do not have this here, but have a general assert helper
   assert_r6(instance, "OptimInstanceQDO")
   assert_r6(acq_function, "AcqFunction")
-  #assert_r6(acq_optimizer, "AcqOptimizer")
+  assert_r6(acq_optimizer, "AcqOptimizer")
   archive = instance$archive
 
   # FIXME: maybe do not have this here, but have a general init helper
@@ -21,8 +21,7 @@ bayesopt_bop = function(instance, acq_function, acq_optimizer, n_design = 4 * in
   repeat {
     acq_function$surrogate$update(xydt = char_to_fct(archive_xyg(archive), ps = instance$search_space), y_cols = c(archive$cols_y, archive$cols_g))  # update surrogate model with new data
     acq_function$update(archive)
-    xdt = acq_optimizer$optimize(acq_function)
-    #xdt = acq_optimizer$optimize(acq_function, archive = archive)
+    xdt = acq_optimizer$optimize(acq_function, archive = archive)
     instance$eval_batch(xdt)
     if (instance$is_terminated || instance$terminator$is_terminated(archive)) break
   }

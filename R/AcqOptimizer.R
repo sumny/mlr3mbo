@@ -17,10 +17,11 @@ AcqOptimizer = R6Class("AcqOptimizer",
       self$terminator = assert_r6(terminator, "Terminator")
       ps = ParamSet$new(list(
         ParamLgl$new("fix_distance"),
-        ParamDbl$new("dist_threshold", lower = 0, upper = 1))
+        ParamDbl$new("dist_threshold", lower = 0, upper = 1),
+        ParamLgl$new("eval_archive"))
       )
 
-      ps$values = list(fix_distance = FALSE, dist_threshold = 0)
+      ps$values = list(fix_distance = FALSE, dist_threshold = 0, eval_archive = TRUE)
       ps$add_dep("dist_threshold", on = "fix_distance", cond = CondEqual$new(TRUE))
       private$.param_set = ps
     },
@@ -43,7 +44,6 @@ AcqOptimizer = R6Class("AcqOptimizer",
     #'
     #' @return [data.table::data.table()] with 1 row per optimum and x as columns.
     optimize = function(acq_function, archive) {
-      browser()
       if (acq_function$codomain$length == 1L) {
         instance = OptimInstanceSingleCrit$new(objective = acq_function, terminator = self$terminator)
       } else {
@@ -51,6 +51,10 @@ AcqOptimizer = R6Class("AcqOptimizer",
           stopf("Optimizer %s is not multi-crit compatible but %s is multi-crit.", self$self$optimizer$format(), acq_function$id)
         }
         instance = OptimInstanceMultiCrit$new(objective = acq_function, terminator = self$terminator)
+      }
+
+      if (self$param_set$values$eval_archive) {
+        instance$eval_batch(archive_x(archive))
       }
 
       xdt = tryCatch(self$optimizer$optimize(instance),
