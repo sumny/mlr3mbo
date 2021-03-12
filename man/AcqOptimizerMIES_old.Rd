@@ -47,7 +47,7 @@ Creates a new instance of this \link[R6:R6Class]{R6} class.
 \subsection{Method \code{optimize()}}{
 Optimize the acquisition function.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{AcqOptimizerMIES_old$optimize(acq_function)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{AcqOptimizerMIES_old$optimize(acq_function, archive)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
