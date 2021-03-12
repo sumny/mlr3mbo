@@ -18,10 +18,10 @@ AcqOptimizer = R6Class("AcqOptimizer",
       ps = ParamSet$new(list(
         ParamLgl$new("fix_distance"),
         ParamDbl$new("dist_threshold", lower = 0, upper = 1),
-        ParamLgl$new("eval_archive"))
+        ParamLgl$new("warm_start"))
       )
 
-      ps$values = list(fix_distance = FALSE, dist_threshold = 0, eval_archive = TRUE)
+      ps$values = list(fix_distance = FALSE, warm_start = FALSE)
       ps$add_dep("dist_threshold", on = "fix_distance", cond = CondEqual$new(TRUE))
       private$.param_set = ps
     },
@@ -53,8 +53,8 @@ AcqOptimizer = R6Class("AcqOptimizer",
         instance = OptimInstanceMultiCrit$new(objective = acq_function, terminator = self$terminator)
       }
 
-      if (self$param_set$values$eval_archive) {
-        instance$eval_batch(archive_x(archive))
+      if (self$param_set$values$warm_start) {
+        instance$eval_batch(archive$best()[, archive$cols_x, with = FALSE])
       }
 
       xdt = tryCatch(self$optimizer$optimize(instance),

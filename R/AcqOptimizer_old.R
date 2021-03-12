@@ -139,7 +139,7 @@ AcqOptimizerMIES_old = R6Class("AcqOptimizerMIES_old",
     #' Optimize the acquisition function.
     #'
     #' @param acq_function [AcqFunction].
-    optimize = function(acq_function) {
+    optimize = function(acq_function, archive) {
       fun = function(x) {
         mult_max_to_min(acq_function$codomain) * unlist(acq_function$eval_dt(setNames(transpose(as.data.table(x)), nm = acq_function$domain$ids())))
       }
@@ -188,14 +188,14 @@ AcqOptimizerMIES_old = R6Class("AcqOptimizerMIES_old",
 
 
 
-#' @title Acquisition Optimizer Mutation Crossover
+#' @title Acquisition Optimizer Mutation Bananas
 #'
 #' @description
-#' `AcqOptimizerMutationCrossover` class that implements a mutation crossover
-#' (QDO) algorithm for the optimization of acquisition functions.
+#' `AcqOptimizerMutateBananas` class that implements a mutation
+#' algorithm for the optimization of acquisition functions.
 #'
 #' @export
-AcqOptimizerMutateCrossover_old = R6Class("AcqOptimizerMutateCrossover_old",
+AcqOptimizerMutateBananas = R6Class("AcqOptimizerMutateBananas",
   inherit = AcqOptimizer_old,
 
   public = list(
@@ -207,26 +207,28 @@ AcqOptimizerMutateCrossover_old = R6Class("AcqOptimizerMutateCrossover_old",
     #' Creates a new instance of this [R6][R6::R6Class] class.
     initialize = function() {
       self$param_set = ParamSet$new(list(
-        ParamInt$new("iters", lower = 1L),
-        ParamLgl$new("niches")
-      ))
-      self$param_set$values = list(iters = 1000L, niches = TRUE)
+        ParamInt$new("n", lower = 1L))
+      )
+      self$param_set$values = list(n = 100)
     },
 
     #' @description
     #' Optimize the acquisition function.
     #'
     #' @param acq_function [AcqFunction].
-    optimize = function(acq_function) {
-      best_niches = if (self$param_set$values$niches) {
-        acq_function$bests[, acq_function$cols_x, with = FALSE]
-      } else {
-        acq_function$archive_data[, acq_function$cols_x, with = FALSE]
+    optimize = function(acq_function, archive) {
+      data = archive$best()[, archive$cols_x, with = FALSE]
+      xdt = map_dtr(seq_len(self$param_set$values$n), .f = function(x) mutate(data, acq_function))
+      xdt = unique(xdt)
+      check = apply(xdt, MARGIN = 1L, FUN = function(x) x == data)
+      check[is.na(check)] = TRUE
+      drop = which(colSums(check) == NCOL(data))
+      xdt = xdt[-drop, ]
+
+      if (NROW(xdt) == 0L) {
+        return(generate_design_random(acq_function$domain, n = 1L)$data)
       }
-      # resolve dependencies by setting up a Design
-      #xdt = Design$new(acq_function$search_space,
-        #map_dtr(seq_len(self$param_set$values$iters), .f = function(x) mutate_niches(best_niches, acq_function)), remove_dupl = FALSE)$data
-      xdt = map_dtr(seq_len(self$param_set$values$iters), .f = function(x) mutate_niches(best_niches, acq_function))
+
       ydt = acq_function$eval_dt(xdt) * mult_max_to_min(acq_function$codomain)
       best = which(ydt[[1L]] == min(ydt[[1L]]))
       if (length(best) > 1L) {
@@ -236,33 +238,15 @@ AcqOptimizerMutateCrossover_old = R6Class("AcqOptimizerMutateCrossover_old",
     }
 ))
 
-mutate_niches = function(best_niches, acq_function) {
-  #checkmate::assert_data_table(best_niches, min.rows = 1L, min.cols = 1, null.ok = FALSE)
-  number_of_niches = NROW(best_niches)
-
+mutate = function(data, acq_function) {
   # uniform mutation
-  best_niches = setDT(imap(best_niches, .f = function(value, name) {
-    mutation_prob = runif(number_of_niches, min = 0, max = 1)
-    qunif = runif(number_of_niches, min = 0, max = 1)
-    mutate = mutation_prob > 0.5
-    value[mutate] = acq_function$domain$params[[name]]$qunif(qunif[mutate])
-    # FIXME: paradox issue 318
-    if (acq_function$domain$params[[name]]$storage_type == "integer") {
-      as.integer(value)
-    } else {
-      value
-    }
-  }))
+  ind = sample(setdiff(seq_len(NCOL(data)), which(is.na(data))), size = 1L)
+  qunif = runif(1, min = 0, max = 1)
+  data[[ind]] = acq_function$domain$params[[colnames(data)[ind]]]$qunif(qunif)
+  data
 
-  if (number_of_niches > 1L) {
-    # uniform crossover
-    best_niches = setDT(map(best_niches, .f = function(value) {
-      value[which.max(runif(number_of_niches, min = 0, max = 1))]
-    }))
-  }
-
-  # FIXME: params that are NA need their default here
-  best_niches = setDT(imap(best_niches, .f = function(value, name) {
+  # params that are NA need their default here
+  data = setDT(imap(data, .f = function(value, name) {
     if (is.na(value)) {
       acq_function$domain$params[[name]]$default
     } else {
@@ -270,13 +254,13 @@ mutate_niches = function(best_niches, acq_function) {
     }
   }))
 
-  for(i in seq_len(NROW(acq_function$domain$deps))) {
+  for (i in seq_len(NROW(acq_function$domain$deps))) {
     dep = acq_function$domain$deps[i, ]
 
-    if (any(map_lgl(dep[["cond"]], .f = function(cond) cond$test(best_niches[[dep[["on"]]]])) == FALSE)) {
-      best_niches[[dep[["id"]]]] = switch(acq_function$domain$storage_type[[dep[["id"]]]], "integer" = NA_integer_, "double" = NA_real_, "character" = NA_character_)
+    if (any(map_lgl(dep[["cond"]], .f = function(cond) cond$test(data[[dep[["on"]]]])) == FALSE)) {
+      data[[dep[["id"]]]] = switch(acq_function$domain$storage_type[[dep[["id"]]]], "integer" = NA_integer_, "double" = NA_real_, "character" = NA_character_)
     }
   }
 
-  best_niches
+  data
 }
