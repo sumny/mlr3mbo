@@ -54,6 +54,8 @@ Optimize the acquisition function.
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{acq_function}}{\link{AcqFunction}.}
+
+\item{\code{archive}}{\link[bbotk:Archive]{bbotk::Archive}.}
 }
 \if{html}{\out{</div>}}
 }
