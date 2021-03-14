@@ -43,22 +43,15 @@ bayesopt_soo = function(instance, acq_function, acq_optimizer, n_design = 4 * in
   acq_function$setup(archive) # setup necessary to determine the domain, codomain (for opt direction) of acq function
 
   repeat {
-    xdt = tryCatch({
-      acq_function$surrogate$update(xydt = archive_xy(archive), y_cols = archive$cols_y)  # update surrogate model with new data
+    acq_function$surrogate$update(xydt = archive_xy(archive), y_cols = archive$cols_y)  # update surrogate model with new data
 
-      # NOTE: necessary because we have to determine e.g. y_best for ei.
-      # There are possible other costy calculations that we just want to do once for each state.
-      # We might not want to do these calculation in acq_function$fun() because this can get called several times during the optimization.
-      # One more costy example would be AEI, where we ask the surrogate for the mean prediction of the points in the design.
-      # Alternatively the update could be called by the AcqOptimizer (but he should not need to know about the archive, so then the archive also has to live in the AcqFunction).
-      acq_function$update(archive)
-
-      acq_optimizer$optimize(acq_function, archive = archive)  # archive need for fix_xdt_distance()
-    }, leads_to_exploration_error = function(leads_to_exploration_error_condition) {
-      lg$info("Proposing a randomly sampled point")  # FIXME: logging?
-      SamplerUnif$new(instance$search_space)$sample(1L)$data  # FIXME: also think about augmented lhs
-    })
-
+    # NOTE: necessary because we have to determine e.g. y_best for ei.
+    # There are possible other costy calculations that we just want to do once for each state.
+    # We might not want to do these calculation in acq_function$fun() because this can get called several times during the optimization.
+    # One more costy example would be AEI, where we ask the surrogate for the mean prediction of the points in the design.
+    # Alternatively the update could be called by the AcqOptimizer (but he should not need to know about the archive, so then the archive also has to live in the AcqFunction).
+    acq_function$update(archive)
+    xdt = acq_optimizer$optimize(acq_function, archive = archive)  # archive need for fix_xdt_distance()
     instance$eval_batch(xdt)
     if (instance$is_terminated || instance$terminator$is_terminated(archive)) break
   }

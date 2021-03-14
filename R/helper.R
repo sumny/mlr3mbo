@@ -33,6 +33,9 @@ archive_bananasyg = function(archive) {
   archive$data[, c(grep("V", colnames(archive$data), value = TRUE), archive$cols_y, archive$cols_g), with = FALSE]
 }
 
+archive_bananasy = function(archive) {
+  archive$data[, c(grep("V", colnames(archive$data), value = TRUE), archive$cols_y), with = FALSE]
+}
 
 archive_xy = function(archive) {
   archive$data[, c(archive$cols_x, archive$cols_y), with = FALSE]

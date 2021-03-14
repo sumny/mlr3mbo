@@ -16,7 +16,8 @@ AcqOptimizer_old = R6Class("AcqOptimizer_old",
     #' Optimize the acquisition function.
     #'
     #' @param acq_function [AcqFunction].
-    optimize = function(acq_function) {
+    #' @param archive [bbotk::Archive].
+    optimize = function(acq_function, archive) {
       stop("abstract")
     }
   )
@@ -43,59 +44,24 @@ AcqOptimizerRandomSearch_old = R6Class("AcqOptimizerRandomSearch_old",
     #' Creates a new instance of this [R6][R6::R6Class] class.
     initialize = function() {
       self$param_set = ParamSet$new(list(
-        ParamInt$new("iters", lower = 1L)
-      ))
-      self$param_set$values$iters = 1000L
+        ParamInt$new("iters", lower = 1L),
+        ParamLgl$new("trafo"))
+      )
+      self$param_set$values = list(iters = 1000L, trafo = FALSE)
     },
 
     #' @description
     #' Optimize the acquisition function.
     #'
     #' @param acq_function [AcqFunction].
-    optimize = function(acq_function) {
-      xdt = generate_design_random(acq_function$domain, self$param_set$values$iters)$data
-      ydt = acq_function$eval_dt(char_to_fct(xdt, ps = acq_function$domain)) * mult_max_to_min(acq_function$codomain)
-      best = which(ydt[[1L]] == min(ydt[[1L]]))
-      if (length(best) > 1L) {
-        best = sample(best, 1L)
-      }
-      xdt[best, ]
-    }
-))
-
-
-
-#' @title Acquisition Optimizer Random Search Bananas Trafo
-#'
-#' @description
-#' `AcqOptimizerRandomSearch_old` class that implements a random search for the
-#' optimization of acquisition functions.
-#'
-#' @export
-AcqOptimizerRandomSearch_old_trafo = R6Class("AcqOptimizerRandomSearch_old_trafo",
-  inherit = AcqOptimizer_old,
-
-  public = list(
-
-    #' @field param_set ([paradox::ParamSet]).
-    param_set = NULL,
-
-    #' @description
-    #' Creates a new instance of this [R6][R6::R6Class] class.
-    initialize = function() {
-      self$param_set = ParamSet$new(list(
-        ParamInt$new("iters", lower = 1L)
-      ))
-      self$param_set$values$iters = 1000L
-    },
-
-    #' @description
-    #' Optimize the acquisition function.
-    #'
-    #' @param acq_function [AcqFunction].
-    optimize = function(acq_function) {
+    #' @param archive [bbotk::Archive].
+    optimize = function(acq_function, archive) {
       xdt = generate_design_random(acq_function$domain, self$param_set$values$iters)
-      txdt = as.data.table(do.call(rbind, xdt$transpose()))
+      txdt = if (self$param_set$values$trafo) {
+        as.data.table(do.call(rbind, xdt$transpose()))
+      } else {
+        xdt$data
+      }
       ydt = acq_function$eval_dt(txdt) * mult_max_to_min(acq_function$codomain)
       best = which(ydt[[1L]] == min(ydt[[1L]]))
       if (length(best) > 1L) {
@@ -104,6 +70,7 @@ AcqOptimizerRandomSearch_old_trafo = R6Class("AcqOptimizerRandomSearch_old_trafo
       xdt$data[best, ]
     }
 ))
+
 
 
 
@@ -139,6 +106,7 @@ AcqOptimizerMIES_old = R6Class("AcqOptimizerMIES_old",
     #' Optimize the acquisition function.
     #'
     #' @param acq_function [AcqFunction].
+    #' @param archive [bbotk::Archive].
     optimize = function(acq_function, archive) {
       fun = function(x) {
         mult_max_to_min(acq_function$codomain) * unlist(acq_function$eval_dt(setNames(transpose(as.data.table(x)), nm = acq_function$domain$ids())))
@@ -207,16 +175,32 @@ AcqOptimizerMutateBananas = R6Class("AcqOptimizerMutateBananas",
     #' Creates a new instance of this [R6][R6::R6Class] class.
     initialize = function() {
       self$param_set = ParamSet$new(list(
-        ParamInt$new("n", lower = 1L))
+        ParamInt$new("n", lower = 1L),
+        ParamLgl$new("trafo"))
       )
-      self$param_set$values = list(n = 100)
+      self$param_set$values = list(n = 100, trafo = FALSE)
     },
 
     #' @description
     #' Optimize the acquisition function.
     #'
     #' @param acq_function [AcqFunction].
+    #' @param archive [bbotk::Archive].
     optimize = function(acq_function, archive) {
+
+      transpose = function(data, ps, filter_na = TRUE, trafo = TRUE) {
+        assert_flag(filter_na)
+        assert_flag(trafo)
+        xs = transpose_list(data)
+        if (filter_na) {
+          xs = map(xs, function(x) Filter(Negate(is_scalar_na), x))
+        }
+        if (ps$has_trafo && trafo) {
+          xs = map(xs, function(x) ps$trafo(x, ps))
+        }
+        return(xs)
+      }
+
       data = archive$best()[, archive$cols_x, with = FALSE]
       xdt = map_dtr(seq_len(self$param_set$values$n), .f = function(x) mutate(data, acq_function))
       xdt = unique(xdt)
@@ -229,7 +213,13 @@ AcqOptimizerMutateBananas = R6Class("AcqOptimizerMutateBananas",
         return(generate_design_random(acq_function$domain, n = 1L)$data)
       }
 
-      ydt = acq_function$eval_dt(xdt) * mult_max_to_min(acq_function$codomain)
+      txdt = if (self$param_set$values$trafo) {
+        as.data.table(do.call(rbind, transpose(xdt, acq_function$domain)))
+      } else {
+        xdt
+      }
+
+      ydt = acq_function$eval_dt(txdt) * mult_max_to_min(acq_function$codomain)
       best = which(ydt[[1L]] == min(ydt[[1L]]))
       if (length(best) > 1L) {
         best = sample(best, 1L)
